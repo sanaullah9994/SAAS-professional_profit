@@ -1,3 +1,0 @@
-import { Card,CardContent } from '@amazon-profit/ui';
-import { DataTable,PageHeader } from '@/components/dashboard';
-export default function Page(){const rows=[["SP | Exact | Bottle Black", "$2,960", "$12,942", "22.9%", "4.37"], ["SP | Exact | Bottle Blue", "$2,675", "$10,115", "26.4%", "3.78"], ["SP | Auto | Discovery", "$1,635", "$5,922", "27.6%", "3.62"]];return <><PageHeader title="PPC Analytics" description="Amazon Ads performance with advertised-SKU allocation and separate unattributed spend."/><Card><CardContent className="pt-5"><DataTable headers=["Campaign", "Spend", "Sales", "ACoS", "ROAS"] rows={rows}/></CardContent></Card></>}

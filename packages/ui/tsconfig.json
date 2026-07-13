@@ -1,0 +1,6 @@
+{
+  "extends": "../config/tsconfig.package.json",
+  "compilerOptions": { "composite": true, "jsx": "react-jsx", "rootDir": "src", "outDir": "dist" },
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["dist", "node_modules"]
+}
