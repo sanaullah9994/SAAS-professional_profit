@@ -1,0 +1,3 @@
+import { Card,CardContent } from '@amazon-profit/ui';
+import { DataTable,PageHeader } from '@/components/dashboard';
+export default function Page(){const rows=[["Product revenue", "$87,462.28", "100%"], ["Amazon fees", "-$20,604.10", "23.6%"], ["Refunds", "-$1,842.13", "2.1%"], ["Advertising", "-$9,630.42", "11.0%"], ["COGS + landed costs", "-$31,904.51", "36.5%"], ["True net profit", "$21,408.64", "24.5%"]];return <><PageHeader title="Profit & Loss" description="True P&L including Amazon fees, refunds, landed cost, advertising, and operating costs."/><Card><CardContent className="pt-5"><DataTable headers=["Line item", "Current period", "% of revenue"] rows={rows}/></CardContent></Card></>}

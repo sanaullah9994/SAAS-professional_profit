@@ -1,0 +1,25 @@
+{
+  "name": "amazon-profit-saas",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.12.4",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "pnpm build:packages && turbo run dev --parallel",
+    "build": "turbo run build",
+    "build:packages": "turbo run build --filter='./packages/*'",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "format": "prettier --write .",
+    "db:migrate": "pnpm --filter @amazon-profit/db migrate",
+    "db:seed": "pnpm --filter @amazon-profit/db seed",
+    "clean": "turbo run clean && rm -rf node_modules .turbo"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "prettier": "^3.9.5",
+    "turbo": "2.10.4",
+    "typescript": "^6.0.3"
+  }
+}

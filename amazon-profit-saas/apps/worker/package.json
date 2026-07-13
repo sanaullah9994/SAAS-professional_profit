@@ -1,0 +1,25 @@
+{
+  "name": "@amazon-profit/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "node -e \"console.log('worker: lint via TypeScript')\"",
+    "test": "node -e \"console.log('worker: tests later')\"",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@amazon-profit/db": "workspace:*",
+    "@amazon-profit/types": "workspace:*",
+    "@amazon-profit/utils": "workspace:*",
+    "bullmq": "^5.80.2",
+    "dotenv": "^17.4.2",
+    "ioredis": "^5.11.1",
+    "pg": "^8.22.0"
+  },
+  "devDependencies": { "@types/node": "^26.1.1", "tsx": "^4.23.1", "typescript": "^6.0.3" }
+}

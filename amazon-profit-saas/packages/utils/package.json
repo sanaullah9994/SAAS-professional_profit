@@ -1,0 +1,23 @@
+{
+  "name": "@amazon-profit/utils",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "node -e \"console.log('utils: lint via TypeScript')\"",
+    "test": "node -e \"console.log('utils: tests later')\"",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@amazon-profit/types": "workspace:*",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.6.0"
+  },
+  "devDependencies": { "typescript": "^6.0.3" }
+}

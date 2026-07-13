@@ -1,0 +1,25 @@
+{
+  "name": "@amazon-profit/ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "node -e \"console.log('ui: lint via TypeScript')\"",
+    "test": "node -e \"console.log('ui: tests later')\"",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@amazon-profit/utils": "workspace:*",
+    "@radix-ui/react-slot": "^1.2.3",
+    "class-variance-authority": "^0.7.1",
+    "react": "^19.2.7"
+  },
+  "devDependencies": { "@types/react": "^19.2.14", "typescript": "^6.0.3" },
+  "peerDependencies": { "react": ">=19" }
+}

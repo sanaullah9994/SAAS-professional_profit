@@ -1,0 +1,5 @@
+{
+  "extends": "../../packages/config/tsconfig.nest.json",
+  "compilerOptions": { "outDir": "dist", "rootDir": "src", "types": ["node","express","multer"] },
+  "include": ["src/**/*.ts"]
+}
