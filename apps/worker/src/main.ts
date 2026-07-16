@@ -5,9 +5,14 @@ import { pool,query,transaction } from '@amazon-profit/db';
 import type { SyncJobData } from '@amazon-profit/types';
 import { calculateProfit,getDateRange } from '@amazon-profit/utils';
 const prefix=process.env.QUEUE_PREFIX??'amazon-profit';
-const qconn=new IORedis(process.env.REDIS_URL??'redis://localhost:6379',{maxRetriesPerRequest:null});
-const wconn=new IORedis(process.env.REDIS_URL??'redis://localhost:6379',{maxRetriesPerRequest:null});
-const queue=new Queue<SyncJobData>('amazon-sync',{connection:qconn,prefix});
+const connection=new IORedis(process.env.REDIS_URL??'redis://localhost:6379',{
+  maxRetriesPerRequest:null,
+  enableReadyCheck:false,
+  retryStrategy:times=>Math.min(times*200,5000),
+  lazyConnect:true,
+});
+connection.on('error',()=>{});
+const queue=new Queue<SyncJobData>('amazon-sync',{connection,prefix});
 async function sync(job:Job<SyncJobData>){
   const range=getDateRange(Number(process.env.INITIAL_SYNC_DAYS??90));
   const account=job.data.amazonAccountId??process.env.MOCK_AMAZON_ACCOUNT_ID!;
@@ -33,10 +38,10 @@ async function sync(job:Job<SyncJobData>){
 const worker=new Worker<SyncJobData>('amazon-sync',async job=>{
   if(job.name==='sync-all-accounts'){const accounts=(await query<any>(`SELECT id::text,workspace_id::text FROM amazon_accounts WHERE status='connected'`)).rows;const range=getDateRange(2);for(const a of accounts)await queue.add('sync-account',{trigger:'scheduled',amazonAccountId:a.id,workspaceId:a.workspace_id,...range});return{queued:accounts.length}}
   return sync(job);
-},{connection:wconn,prefix,concurrency:Number(process.env.WORKER_CONCURRENCY??4)});
-await queue.upsertJobScheduler('hourly-amazon-sync',{every:Number(process.env.SYNC_INTERVAL_MS??3600000)},{name:'sync-all-accounts',data:{trigger:'scheduled'}});
+},{connection,prefix,concurrency:Number(process.env.WORKER_CONCURRENCY??4)});
 worker.on('completed',j=>console.log('[worker] completed',j.id));
 worker.on('failed',(j,e)=>console.error('[worker] failed',j?.id,e));
 console.log('[worker] started');
-const stop=async()=>{await worker.close();await queue.close();await qconn.quit();await wconn.quit();await pool.end();process.exit(0)};
+queue.upsertJobScheduler('hourly-amazon-sync',{every:Number(process.env.SYNC_INTERVAL_MS??3600000)},{name:'sync-all-accounts',data:{trigger:'scheduled'}}).catch(()=>{});
+const stop=async()=>{await worker.close();await queue.close();await connection.quit();await pool.end();process.exit(0)};
 process.on('SIGINT',()=>void stop());process.on('SIGTERM',()=>void stop());
