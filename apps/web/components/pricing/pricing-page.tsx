@@ -8,18 +8,13 @@ import { Footer } from '@/components/marketing/footer';
 import { CTASection } from '@/components/marketing/cta-section';
 import { SecuritySection } from '@/components/marketing/security-section';
 import { LogoCloud } from '@/components/marketing/logo-cloud';
-import { Hero } from './hero';
-import { ProblemSection } from './problem-section';
-import { FeatureGrid } from './feature-grid';
-import { MultiAccountSection } from './multi-account-section';
-import { ProfitCalcSection } from './profit-calc-section';
-import { AdAnalyticsSection } from './ad-analytics-section';
-import { AiComingSoon } from './ai-coming-soon';
-import { TestimonialSection } from './testimonial-section';
+import { PricingPlans } from './pricing-plans';
+import { TrustStats } from './trust-stats';
+import { FaqSection } from './faq-section';
 
 gsap.registerPlugin(ScrollTrigger);
 
-export function LandingPage() {
+export function PricingPage() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -59,24 +54,19 @@ export function LandingPage() {
   return (
     <div ref={containerRef} className="min-h-screen overflow-x-hidden bg-background text-foreground">
       <Header />
-      <Hero />
+      <PricingPlans />
       <LogoCloud />
-      <ProblemSection />
-      <FeatureGrid />
-      <MultiAccountSection />
-      <ProfitCalcSection />
-      <AdAnalyticsSection />
       <SecuritySection />
-      <AiComingSoon />
-      <TestimonialSection />
+      <TrustStats />
+      <FaqSection />
       <CTASection
         heading={
           <>
-            The operating system for <span className="text-[#5fd08a] underline decoration-[#5fd08a]/40 underline-offset-[6px]">Amazon agencies</span>.
+            Start free. Upgrade when your <span className="text-[#5fd08a] underline decoration-[#5fd08a]/40 underline-offset-[6px]">agency grows</span>.
           </>
         }
-        description="Manage every client, know true profit, and prove your value — all from one workspace."
-        primaryHref="/login"
+        description="14-day free trial on every plan. No credit card, no lock-in — cancel anytime."
+        primaryHref="#tiers"
         primaryLabel="Start Free"
         secondaryHref="#cta"
         secondaryLabel="Book a Demo"
