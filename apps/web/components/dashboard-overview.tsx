@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowUpRight, PlayCircle, Receipt, TrendingUp } from 'lucide-react';
+import { ArrowDownWideNarrow, ArrowUpRight, ExternalLink, MoreHorizontal, PlayCircle, Receipt, Search, TrendingUp } from 'lucide-react';
 import { cn } from '@amazon-profit/utils';
 
 const ranges = ['Today', 'Yesterday', 'This month', 'Last month', 'Custom range'];
@@ -23,6 +23,60 @@ const expenses = [
   { name: 'Fulfillment Fees', pct: '3%', amount: '$28', tag: '(1)', warn: false },
   { name: 'Discounts', pct: '0%', amount: '$0', tag: '', warn: false },
   { name: 'Manual Exp.', pct: '0%', amount: '$0', tag: '', warn: false },
+];
+
+const products = [
+  {
+    parent: 'B097FF9WPG',
+    title: 'Clear Polycarbonate Sheet 48" x 96" (5/64" Thick)',
+    initials: 'CL',
+    sales: '$826',
+    organic: '$182 · 22%',
+    advertising: '$644 · 78%',
+    units: '6',
+    avgPrice: '$137.66',
+    discounts: '0 · 0%',
+    expenses: '$290',
+    refundsRate: '$0 · 0.00%',
+    marketing: '$34 · 4.14%',
+    profit: '$536',
+    margin: '64.93%',
+    roi: '425.60%',
+  },
+  {
+    parent: 'B0GSGKW1YF',
+    title: 'Black ABS Plastic Sheet. DIY and Hobby Plastic. One Textured Side One Smooth Matte Side.',
+    initials: 'BL',
+    sales: '$86',
+    organic: '$0 · 0%',
+    advertising: '$86 · 100%',
+    units: '1',
+    avgPrice: '$85.99',
+    discounts: '0 · 0%',
+    expenses: '$29',
+    refundsRate: '$0 · 0.00%',
+    marketing: '$3 · 3.30%',
+    profit: '$57',
+    margin: '66.16%',
+    roi: '425.83%',
+  },
+  {
+    parent: 'B0C54GGRWB',
+    title: 'Black HDPE Sheet 12" x 24" (3/4" Thick)',
+    initials: 'BL',
+    sales: '$73',
+    organic: '$73 · 100%',
+    advertising: '$0 · 0%',
+    units: '2',
+    avgPrice: '$36.49',
+    discounts: '0 · 0%',
+    expenses: '$60',
+    refundsRate: '$0 · 0.00%',
+    marketing: '$0 · 0.00%',
+    profit: '$13',
+    margin: '17.56%',
+    roi: '312.40%',
+  },
 ];
 
 function Skeleton({ className, style }: { className?: string; style?: React.CSSProperties }) {
@@ -245,6 +299,143 @@ export function DashboardOverview() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="mt-7 flex flex-col gap-5">
+          <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-border bg-card p-5">
+            <Skeleton className="h-[22px] w-28" />
+            <Skeleton className="h-11 min-w-[220px] flex-1 rounded-[11px]" />
+            <Skeleton className="h-11 w-[170px] rounded-[11px]" />
+            <Skeleton className="h-11 w-[190px] rounded-[11px]" />
+          </div>
+          {[0, 1].map((i) => (
+            <div key={i}>
+              <Skeleton className="mb-2 h-[11px] w-36" />
+              <Skeleton className="mb-3 h-[15px] w-80" />
+              <Skeleton className="h-[118px] w-full rounded-2xl" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-7">
+          <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-border bg-card p-4.5">
+            <h2 className="mr-2 text-xl font-extrabold tracking-tight">Products</h2>
+            <div className="relative min-w-[220px] flex-1">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/60" />
+              <input
+                placeholder="Search by Title / ASIN / Category Name"
+                className="w-full rounded-[11px] border border-border bg-muted/30 py-3 pl-10 pr-3.5 text-[13.5px] font-medium text-foreground placeholder:text-muted-foreground/70 outline-none focus:border-primary focus:bg-card"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <button className="relative flex items-center gap-6 rounded-[11px] border border-border bg-muted/30 px-3.5 pb-2 pt-5 text-[13.5px] font-bold text-foreground/80 transition hover:border-foreground/20">
+                <span className="absolute left-3.5 top-[7px] text-[9.5px] font-bold uppercase tracking-widest text-muted-foreground/70">Sort by</span>
+                Sales
+                <span className="text-[11px] text-muted-foreground">▾</span>
+              </button>
+              <button className="flex size-[46px] items-center justify-center rounded-[11px] border border-border bg-muted/30 text-muted-foreground transition hover:border-foreground/20">
+                <ArrowDownWideNarrow className="size-[17px]" strokeWidth={1.7} />
+              </button>
+              <button className="relative flex items-center gap-10 rounded-[11px] border border-border bg-muted/30 px-3.5 pb-2 pt-5 text-[13.5px] font-bold text-foreground/80 transition hover:border-foreground/20">
+                <span className="absolute left-3.5 top-[7px] text-[9.5px] font-bold uppercase tracking-widest text-muted-foreground/70">Group by</span>
+                Parent
+                <span className="text-[11px] text-muted-foreground">▾</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-col gap-5">
+            {products.map((p) => (
+              <div key={p.parent}>
+                <div className="mb-2.5 px-0.5">
+                  <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground/70">Parent: {p.parent}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="max-w-full truncate text-[15px] font-bold">{p.title}</span>
+                    <ExternalLink className="size-3.5 shrink-0 text-muted-foreground/50" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-[84px_repeat(5,minmax(0,1fr))] items-stretch overflow-hidden rounded-[14px] border border-border bg-card p-4 transition hover:border-foreground/15">
+                  <div className="flex size-[70px] items-center justify-center self-center rounded-[10px] border border-border bg-muted/40 text-[15px] font-extrabold text-muted-foreground/40">
+                    {p.initials}
+                  </div>
+
+                  <div className="flex justify-between gap-3 border-l border-border/70 px-4">
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground/70">Sales</div>
+                      <div className="mt-1.5 text-[22px] font-extrabold leading-none tracking-tight">{p.sales}</div>
+                    </div>
+                    <div className="flex flex-col items-end gap-2 text-right">
+                      <div>
+                        <div className="mb-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground/70">Organic</div>
+                        <div className="text-[12.5px] font-bold text-primary">{p.organic}</div>
+                      </div>
+                      <div>
+                        <div className="mb-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground/70">Advertising</div>
+                        <div className="text-[12.5px] font-bold text-foreground/70">{p.advertising}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between gap-3 border-l border-border/70 px-4">
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground/70">Units</div>
+                      <div className="mt-1.5 text-[22px] font-extrabold leading-none tracking-tight">{p.units}</div>
+                    </div>
+                    <div className="flex flex-col items-end gap-2 text-right">
+                      <div>
+                        <div className="mb-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground/70">Avg Price</div>
+                        <div className="text-[12.5px] font-bold text-foreground/80">{p.avgPrice}</div>
+                      </div>
+                      <div>
+                        <div className="mb-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground/70">Discounts</div>
+                        <div className="text-[12.5px] font-bold text-foreground/70">{p.discounts}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col border-l border-border/70 px-4">
+                    <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground/70">Expenses</div>
+                    <div className="mt-1.5 text-[22px] font-extrabold leading-none tracking-tight">{p.expenses}</div>
+                    <button className="mt-3 flex w-fit items-center gap-2 rounded-lg border border-border bg-muted/30 px-2.5 py-1.5 text-muted-foreground transition hover:border-foreground/20">
+                      <MoreHorizontal className="size-3.5" />
+                      <span className="text-[10px]">▾</span>
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col justify-center gap-3.5 border-l border-border/70 px-4">
+                    <div>
+                      <div className="mb-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground/70">Refunds · Rate</div>
+                      <div className="text-[13px] font-bold text-foreground/80">{p.refundsRate}</div>
+                    </div>
+                    <div>
+                      <div className="mb-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground/70">Marketing · %</div>
+                      <div className="text-[13px] font-bold text-foreground/70">{p.marketing}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between gap-3 border-l-2 border-primary py-0.5 pl-4.5 pr-1">
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground/70">Profit</div>
+                      <div className="mt-1.5 text-[22px] font-extrabold leading-none tracking-tight text-primary">{p.profit}</div>
+                    </div>
+                    <div className="flex flex-col items-end gap-2 text-right">
+                      <div>
+                        <div className="mb-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground/70">Margin</div>
+                        <div className="text-[12.5px] font-bold text-primary">{p.margin}</div>
+                      </div>
+                      <div>
+                        <div className="mb-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground/70">ROI</div>
+                        <div className="text-[12.5px] font-bold text-primary">{p.roi}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

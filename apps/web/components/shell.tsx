@@ -1,41 +1,68 @@
 'use client';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import {
+  AlertTriangle,
   BarChart3,
   Boxes,
   Calculator,
   ChevronDown,
+  FileText,
   Gauge,
+  Gift,
+  Hash,
+  LogOut,
   Moon,
   Package,
   Search,
+  Settings as SettingsIcon,
+  Shapes,
   Sun,
   TrendingUp,
+  Upload,
+  Users,
 } from 'lucide-react';
 import { cn } from '@amazon-profit/utils';
 import { LogoMark } from '@/components/marketing/logo';
+import { authClient } from '@/lib/auth-client';
 
-const coreLinks = [
-  ['/dashboard', 'Profit Dashboard', BarChart3],
-  ['/profit-calculator', 'Profit Calculator', Calculator],
-  ['/fba-inventory', 'FBA Inventory', Boxes],
-  ['/traffic-analytics', 'Traffic Analytics', TrendingUp],
-] as const;
+type NavLink = { href: string; label: string; icon: typeof BarChart3; badge?: 'new' | 'warning' };
 
-const advancedLinks = [
-  ['/keyword-frequency', 'Keyword Frequency', Search],
-  ['/inventory', 'Inventory', Package],
-  ['/performance', 'Performance', Gauge],
-] as const;
+const coreLinks: NavLink[] = [
+  { href: '/dashboard', label: 'Profit Dashboard', icon: BarChart3 },
+  { href: '/profit-calculator', label: 'Profit Calculator', icon: Calculator },
+  { href: '/fba-inventory', label: 'FBA Inventory', icon: Boxes },
+  { href: '/traffic-analytics', label: 'Traffic Analytics', icon: TrendingUp },
+];
 
-function NavGroup({ title, links, path }: { title: string; links: readonly (readonly [string, string, typeof BarChart3])[]; path: string }) {
+const advancedLinks: NavLink[] = [
+  { href: '/keyword-frequency', label: 'Keyword Frequency', icon: Search },
+  { href: '/inventory', label: 'Inventory', icon: Package },
+  { href: '/performance', label: 'Performance', icon: Gauge },
+];
+
+const setupLinks: NavLink[] = [
+  { href: '/products-cogs', label: 'Products and COGS', icon: Boxes, badge: 'warning' },
+  { href: '/plan-setup', label: 'Plan Setup & Upload', icon: Upload },
+  { href: '/custom-categories', label: 'Custom Categories', icon: Shapes },
+  { href: '/manual-expenses', label: 'Manual Expenses', icon: FileText },
+  { href: '/search-term-tags', label: 'Search Term Tags', icon: Hash },
+];
+
+const accountLinks: NavLink[] = [
+  { href: '/settings', label: 'Settings', icon: SettingsIcon },
+  { href: '/user-permissions', label: 'User Permissions', icon: Users, badge: 'new' },
+  { href: '/invoices', label: 'Invoices', icon: FileText },
+  { href: '/refer-earn', label: 'Refer & Earn', icon: Gift },
+];
+
+function NavGroup({ title, links, path }: { title: string; links: NavLink[]; path: string }) {
   return (
     <div>
       <div className="mb-2 px-2 text-[10.5px] font-bold uppercase tracking-widest text-muted-foreground/70">{title}</div>
       <div className="flex flex-col gap-0.5">
-        {links.map(([href, label, Icon]) => (
+        {links.map(({ href, label, icon: Icon, badge }) => (
           <Link
             key={href}
             href={href}
@@ -45,7 +72,13 @@ function NavGroup({ title, links, path }: { title: string; links: readonly (read
             )}
           >
             <Icon className={cn('size-[18px]', path === href && 'text-primary')} strokeWidth={1.8} />
-            {label}
+            <span className="flex-1">{label}</span>
+            {badge === 'warning' && <AlertTriangle className="size-3.5 shrink-0 text-amber-500" />}
+            {badge === 'new' && (
+              <span className="shrink-0 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[9.5px] font-extrabold tracking-wide text-violet-600 dark:text-violet-400">
+                NEW
+              </span>
+            )}
           </Link>
         ))}
       </div>
@@ -55,11 +88,17 @@ function NavGroup({ title, links, path }: { title: string; links: readonly (read
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
+  const router = useRouter();
   const { theme, setTheme } = useTheme();
+
+  async function logOut() {
+    await authClient.signOut();
+    router.push('/login');
+  }
 
   return (
     <div className="min-h-screen">
-      <aside className="fixed inset-y-0 left-0 hidden w-[248px] flex-col gap-6 border-r border-border bg-card px-4 py-5 lg:flex">
+      <aside className="fixed inset-y-0 left-0 hidden w-[248px] flex-col gap-6 overflow-y-auto border-r border-border bg-card px-4 py-5 lg:flex">
         <Link href="/dashboard" className="flex items-center gap-2 px-1">
           <LogoMark size={22} />
           <span className="text-[17px] font-extrabold tracking-tight">ProfitPilot</span>
@@ -82,9 +121,40 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-5 overflow-y-auto">
+        <nav className="flex flex-1 flex-col gap-5">
           <NavGroup title="Core" links={coreLinks} path={path} />
           <NavGroup title="Advanced" links={advancedLinks} path={path} />
+          <NavGroup title="Setup Tools" links={setupLinks} path={path} />
+          <div>
+            <div className="mb-2 px-2 text-[10.5px] font-bold uppercase tracking-widest text-muted-foreground/70">Account</div>
+            <div className="flex flex-col gap-0.5">
+              {accountLinks.map(({ href, label, icon: Icon, badge }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className={cn(
+                    'flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-muted',
+                    path === href && 'bg-muted font-bold text-foreground',
+                  )}
+                >
+                  <Icon className={cn('size-[18px]', path === href && 'text-primary')} strokeWidth={1.8} />
+                  <span className="flex-1">{label}</span>
+                  {badge === 'new' && (
+                    <span className="shrink-0 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[9.5px] font-extrabold tracking-wide text-violet-600 dark:text-violet-400">
+                      NEW
+                    </span>
+                  )}
+                </Link>
+              ))}
+              <button
+                onClick={logOut}
+                className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-muted-foreground transition hover:bg-muted"
+              >
+                <LogOut className="size-[18px]" strokeWidth={1.8} />
+                Log Out
+              </button>
+            </div>
+          </div>
         </nav>
 
         <div className="flex items-center gap-2.5 border-t border-border pt-3">
