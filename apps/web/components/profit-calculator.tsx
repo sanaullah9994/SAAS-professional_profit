@@ -2,18 +2,14 @@
 import { Fragment, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Download, Info, PlayCircle, Search, SquarePen } from 'lucide-react';
-import { cn } from '@amazon-profit/utils';
-
-const products = [
-  { name: '360 Nutrition Matcha Green Tea', sku: 'F2254DS-FBA-S', salePrice: '$17.45', fbaFee: '$4.35', referralPct: '15%', referralAmt: '$2.62', cogs: '$2.89', storageFee: '$0.03', refundRate: '0.68%', marketing: '25.61%', profit: '$7.44', margin: '42.65%' },
-  { name: '360 Nutrition Matcha Latte Mix', sku: 'F1001DS / ASIN: B08…', salePrice: '$12.95', fbaFee: '$4.35', referralPct: '15%', referralAmt: '$1.94', cogs: '$1.35', storageFee: '$0.01', refundRate: '1.52%', marketing: '23.77%', profit: '$5.10', margin: '39.41%' },
-  { name: '360 Nutrition Instant Coffee', sku: 'F2579DS / ASIN: B09…', salePrice: '$13.99', fbaFee: '$4.09', referralPct: '8%', referralAmt: '$1.12', cogs: '$0.00', storageFee: '$0.02', refundRate: '0.33%', marketing: '3.09%', profit: '$8.71', margin: '62.26%' },
-  { name: '360 Nutrition Instant Cocoa', sku: 'F2576DS / ASIN: B09…', salePrice: '$13.99', fbaFee: '$4.09', referralPct: '15%', referralAmt: '$2.10', cogs: '$0.00', storageFee: '$0.02', refundRate: '0.94%', marketing: '3.03%', profit: '$7.65', margin: '54.68%' },
-  { name: '360 Nutrition Collagen Peptides', sku: 'F3120DS / ASIN: B0A…', salePrice: '$24.99', fbaFee: '$5.62', referralPct: '15%', referralAmt: '$3.75', cogs: '$4.10', storageFee: '$0.05', refundRate: '0.41%', marketing: '8.12%', profit: '$9.34', margin: '37.38%' },
-  { name: '360 Nutrition Electrolyte Mix', sku: 'F3345DS / ASIN: B0B…', salePrice: '$19.49', fbaFee: '$4.88', referralPct: '15%', referralAmt: '$2.92', cogs: '$3.20', storageFee: '$0.04', refundRate: '0.77%', marketing: '6.40%', profit: '$6.05', margin: '31.04%' },
-].map((p) => ({ ...p, initials: p.name.replace(/^360 Nutrition /, '').slice(0, 2).toUpperCase() }));
+import { cn, formatCurrency, formatPercent } from '@amazon-profit/utils';
+import { fetchProfitCalculator, type ProfitCalculatorRow } from '@/lib/api';
 
 const columns = ['Sale Price', 'FBA Fee', 'Referral Fee', 'COGS', 'Storage Fee', 'Refund Rate', 'Marketing', 'Profit', 'Margin %'];
+
+function initialsOf(title: string) {
+  return title.slice(0, 2).toUpperCase();
+}
 
 function EditCell({ value, editable = true }: { value: React.ReactNode; editable?: boolean }) {
   return (
@@ -34,18 +30,24 @@ function Skeleton({ className }: { className?: string }) {
 
 export function ProfitCalculator() {
   const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<ProfitCalculatorRow[]>([]);
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 1200);
-    return () => clearTimeout(t);
+    let cancelled = false;
+    fetchProfitCalculator(30).then((rows) => {
+      if (!cancelled) {
+        setProducts(rows ?? []);
+        setLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
     <div>
-      <Link
-        href="/dashboard"
-        className="mb-6 inline-flex items-center gap-2.5 rounded-[11px] border border-border bg-card px-4 py-2.5 text-[13.5px] font-bold text-foreground/80 transition hover:border-foreground/20"
-      >
+      <Link href="/dashboard" className="mb-6 inline-flex items-center gap-2.5 rounded-[11px] border border-border bg-card px-4 py-2.5 text-[13.5px] font-bold text-foreground/80 transition hover:border-foreground/20">
         <ArrowLeft className="size-4" />
         Back to dashboard
       </Link>
@@ -85,6 +87,10 @@ export function ProfitCalculator() {
             <Skeleton key={i} className="mb-2.5 h-[60px] w-full" />
           ))}
         </div>
+      ) : products.length === 0 ? (
+        <div className="rounded-[14px] border border-dashed border-border p-10 text-center text-sm font-semibold text-muted-foreground/70">
+          No product activity in this range.
+        </div>
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-border bg-card">
           <div className="grid min-w-[1140px] grid-cols-[minmax(240px,1.5fr)_repeat(9,minmax(94px,1fr))]">
@@ -100,47 +106,42 @@ export function ProfitCalculator() {
               Product
             </div>
             {columns.map((c, i) => (
-              <div
-                key={c}
-                className={cn(
-                  'border-b border-border px-3 py-3.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground/70',
-                  i > 0 && 'border-l border-border/60',
-                  i >= 7 && 'bg-primary/[0.03]',
-                )}
-              >
+              <div key={c} className={cn('border-b border-border px-3 py-3.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground/70', i > 0 && 'border-l border-border/60', i >= 7 && 'bg-primary/[0.03]')}>
                 {c}
               </div>
             ))}
 
             {products.map((p) => (
-              <Fragment key={p.sku}>
+              <Fragment key={p.id}>
                 <div className="sticky left-0 z-[1] flex items-center gap-3 border-b border-border/60 bg-card px-4.5 py-3.5">
                   <div className="flex size-11 shrink-0 items-center justify-center rounded-[9px] border border-border bg-muted/40 text-xs font-extrabold text-muted-foreground/40">
-                    {p.initials}
+                    {initialsOf(p.title)}
                   </div>
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-bold">{p.name}</div>
-                    <div className="truncate text-[11.5px] font-semibold text-muted-foreground/70">{p.sku}</div>
+                    <div className="truncate text-sm font-bold">{p.title}</div>
+                    <div className="truncate text-[11.5px] font-semibold text-muted-foreground/70">
+                      {p.sku} / ASIN: {p.asin}
+                    </div>
                   </div>
                 </div>
-                <EditCell value={p.salePrice} />
-                <EditCell value={p.fbaFee} />
+                <EditCell value={formatCurrency(p.avgPrice)} />
+                <EditCell value={formatCurrency(p.fbaFee)} />
                 <EditCell
                   value={
                     <>
-                      {p.referralPct} <span className="font-semibold text-muted-foreground/60">{p.referralAmt}</span>
+                      {formatPercent(p.referralPct)} <span className="font-semibold text-muted-foreground/60">{formatCurrency(p.referralAmt)}</span>
                     </>
                   }
                 />
-                <EditCell value={p.cogs} />
-                <EditCell value={p.storageFee} />
-                <EditCell value={p.refundRate} />
-                <EditCell value={p.marketing} />
+                <EditCell value={formatCurrency(p.cogsPerUnit)} />
+                <EditCell value={formatCurrency(p.storageFeePerUnit)} />
+                <EditCell value={formatPercent(p.refundRate)} />
+                <EditCell value={formatPercent(p.marketingPct)} />
                 <div className="border-b border-border/60 bg-primary/[0.03] px-3 py-3.5">
-                  <span className="text-[15px] font-extrabold tracking-tight text-primary">{p.profit}</span>
+                  <span className="text-[15px] font-extrabold tracking-tight text-primary">{formatCurrency(p.profit)}</span>
                 </div>
                 <div className="border-b border-border/60 bg-primary/[0.03] px-3 py-3.5">
-                  <span className="text-sm font-extrabold text-primary">{p.margin}</span>
+                  <span className="text-sm font-extrabold text-primary">{formatPercent(p.marginPct)}</span>
                 </div>
               </Fragment>
             ))}

@@ -1,4 +1,5 @@
 'use client';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { Moon, Sun } from 'lucide-react';
@@ -13,7 +14,9 @@ const navLinks = [
 ] as const;
 
 export function Header() {
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   return (
     <header data-animate className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-lg">
@@ -32,8 +35,13 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-            {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
+          <Button
+            variant="ghost"
+            size="icon"
+            disabled={!mounted}
+            onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+          >
+            {mounted && resolvedTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
           </Button>
           <Link href="/login">
             <Button variant="ghost" className="hidden sm:inline-flex">

@@ -16,3 +16,6 @@ coverage/
 *.pem
 
 .vercel
+
+# SQL is run manually against the DB now (no migrate.ts runner) — not tracked in git
+packages/db/migrations/*.sql

@@ -1,12 +1,5 @@
-import { Card, CardContent } from '@amazon-profit/ui';
-import { PageHeader } from '@/components/dashboard';
+import { TrafficAnalytics } from '@/components/traffic-analytics';
+
 export default function Page() {
-  return (
-    <>
-      <PageHeader title="Traffic Analytics" description="Sessions, page views, and conversion by traffic source." />
-      <Card>
-        <CardContent className="py-16 text-center text-sm text-muted-foreground">Coming soon.</CardContent>
-      </Card>
-    </>
-  );
+  return <TrafficAnalytics />;
 }
