@@ -20,7 +20,7 @@ export function Hero() {
             for agencies managing Amazon at scale.
           </p>
           <div className="mb-6 flex flex-wrap gap-3">
-            <Link href="/login">
+            <Link href="/login?mode=up">
               <Button size="lg" className="h-[52px] rounded-xl px-7 text-base font-bold">
                 Start Free
               </Button>

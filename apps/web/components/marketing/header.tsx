@@ -48,7 +48,7 @@ export function Header() {
               Log in
             </Button>
           </Link>
-          <Link href="/login">
+          <Link href="/login?mode=up">
             <Button>Start Free</Button>
           </Link>
         </div>

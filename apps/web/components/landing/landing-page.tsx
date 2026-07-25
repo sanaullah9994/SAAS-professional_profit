@@ -76,7 +76,7 @@ export function LandingPage() {
           </>
         }
         description="Manage every client, know true profit, and prove your value — all from one workspace."
-        primaryHref="/login"
+        primaryHref="/login?mode=up"
         primaryLabel="Start Free"
         secondaryHref="#cta"
         secondaryLabel="Book a Demo"

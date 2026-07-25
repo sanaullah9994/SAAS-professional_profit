@@ -140,7 +140,7 @@ export function PricingPlans() {
               <div className="mb-6 text-xs font-medium text-muted-foreground/70">
                 {annual ? 'per month, billed annually' : 'billed monthly'}
               </div>
-              <Link href="/login" className="mb-2.5">
+              <Link href="/login?mode=up" className="mb-2.5">
                 <Button className={cn('h-[46px] w-full rounded-xl text-[14.5px] font-bold', !tier.featured && 'bg-foreground/90 hover:bg-foreground')}>
                   Start Free Trial
                 </Button>
@@ -185,7 +185,7 @@ export function PricingPlans() {
                       <div className="my-1 text-[13px] font-semibold text-muted-foreground">
                         ${annual ? tier.annual : tier.monthly}/mo
                       </div>
-                      <Link href="/login" className="text-[12.5px] font-bold text-primary hover:underline">
+                      <Link href="/login?mode=up" className="text-[12.5px] font-bold text-primary hover:underline">
                         Start trial →
                       </Link>
                     </th>

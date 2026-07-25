@@ -12,6 +12,19 @@ export const auth = betterAuth({
 
   database: pool,
 
+  rateLimit: {
+    enabled: true, // by default better-auth only rate-limits in production
+    window: 60,
+    max: 20,
+    storage: 'memory', // single-instance deploy; move to 'database' if we ever scale horizontally
+    customRules: {
+      '/sign-in/email': { window: 60, max: 5 },
+      '/sign-up/email': { window: 60, max: 5 },
+      '/forgot-password': { window: 60, max: 3 },
+      '/reset-password': { window: 60, max: 5 },
+    },
+  },
+
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,

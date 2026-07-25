@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookie } from 'better-auth/cookies';
 
+// Everything NOT listed here is protected by default, so a new page under
+// app/(dashboard)/* is never accidentally left unauthenticated just because
+// nobody remembered to add it to a matcher list.
+const PUBLIC_PATHS = new Set(['/', '/pricing', '/login', '/forgot-password', '/reset-password', '/verify-email']);
+
 export function middleware(request: NextRequest) {
+  if (PUBLIC_PATHS.has(request.nextUrl.pathname)) return NextResponse.next();
+
   const sessionCookie = getSessionCookie(request);
   if (!sessionCookie) {
     const loginUrl = new URL('/login', request.url);
@@ -11,33 +18,6 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Everything rendered under app/(dashboard)/* — requires a session.
 export const config = {
-  matcher: [
-    '/dashboard/:path*',
-    '/alerts/:path*',
-    '/cogs/:path*',
-    '/connections/:path*',
-    '/custom-categories/:path*',
-    '/fba-inventory/:path*',
-    '/inventory/:path*',
-    '/invoices/:path*',
-    '/keyword-frequency/:path*',
-    '/manual-expenses/:path*',
-    '/orders/:path*',
-    '/performance/:path*',
-    '/plan-setup/:path*',
-    '/ppc-analytics/:path*',
-    '/products-cogs/:path*',
-    '/profit-calculator/:path*',
-    '/profit-loss/:path*',
-    '/refer-earn/:path*',
-    '/refunds/:path*',
-    '/search-term-tags/:path*',
-    '/settings/:path*',
-    '/sku-profitability/:path*',
-    '/sync-history/:path*',
-    '/traffic-analytics/:path*',
-    '/user-permissions/:path*',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|icon.svg).*)'],
 };

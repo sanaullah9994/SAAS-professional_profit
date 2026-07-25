@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@amazon-profit/ui';
@@ -22,13 +22,20 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirect') || '/dashboard';
-  const [mode, setMode] = useState<'in' | 'up'>('in');
+  const [mode, setMode] = useState<'in' | 'up'>(searchParams.get('mode') === 'up' ? 'up' : 'in');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<React.ReactNode>('');
   const [googleLoading, setGoogleLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [pendingVerification, setPendingVerification] = useState<string | null>(null);
   const [resent, setResent] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => setResendCooldown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   function switchMode(next: 'in' | 'up') {
     setMode(next);
@@ -49,10 +56,17 @@ export function LoginForm() {
 
     setSubmitting(true);
     const origin = window.location.origin;
-    const r =
-      mode === 'in'
-        ? await authClient.signIn.email({ email, password })
-        : await authClient.signUp.email({ email, password, name, callbackURL: `${origin}/verify-email` });
+    let r: Awaited<ReturnType<typeof authClient.signIn.email>> | Awaited<ReturnType<typeof authClient.signUp.email>>;
+    try {
+      r =
+        mode === 'in'
+          ? await authClient.signIn.email({ email, password })
+          : await authClient.signUp.email({ email, password, name, callbackURL: `${origin}/verify-email` });
+    } catch {
+      setSubmitting(false);
+      setError('Something went wrong — check your connection and try again.');
+      return;
+    }
 
     if (r.error) {
       if (mode === 'up' && r.error.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL') {
@@ -82,6 +96,29 @@ export function LoginForm() {
             </>,
           );
         }
+      } else if (mode === 'in' && r.error.code === 'EMAIL_NOT_VERIFIED') {
+        setSubmitting(false);
+        setPendingVerification(email);
+        return;
+      } else if (mode === 'in') {
+        const info = await checkEmail(email);
+        if (info.providers.includes('google') && !info.providers.includes('credential')) {
+          setError(
+            <>
+              This account signs in with Google — no password has been set yet.{' '}
+              <button type="button" onClick={googleSignIn} className="font-semibold text-primary underline">
+                Continue with Google
+              </button>{' '}
+              or{' '}
+              <Link href="/forgot-password" className="font-semibold text-primary underline">
+                set a password
+              </Link>{' '}
+              to sign in this way instead.
+            </>,
+          );
+        } else {
+          setError(r.error.message ?? 'Invalid email or password');
+        }
       } else {
         setError(r.error.message ?? 'Authentication failed');
       }
@@ -100,18 +137,28 @@ export function LoginForm() {
   async function googleSignIn() {
     setError('');
     setGoogleLoading(true);
-    const r = await authClient.signIn.social({ provider: 'google', callbackURL: redirectTo });
-    if (r.error) {
-      setError(r.error.message ?? 'Google sign-in failed');
+    try {
+      const r = await authClient.signIn.social({ provider: 'google', callbackURL: redirectTo });
+      if (r.error) {
+        setError(r.error.message ?? 'Google sign-in failed');
+        setGoogleLoading(false);
+      }
+    } catch {
+      setError('Something went wrong — check your connection and try again.');
       setGoogleLoading(false);
     }
   }
 
   async function resendVerification() {
-    if (!pendingVerification) return;
+    if (!pendingVerification || resendCooldown > 0) return;
     setResent(false);
-    await authClient.sendVerificationEmail({ email: pendingVerification, callbackURL: `${window.location.origin}/verify-email` });
-    setResent(true);
+    try {
+      await authClient.sendVerificationEmail({ email: pendingVerification, callbackURL: `${window.location.origin}/verify-email` });
+      setResent(true);
+      setResendCooldown(30);
+    } catch {
+      setResent(false);
+    }
   }
 
   if (pendingVerification) {
@@ -125,8 +172,8 @@ export function LoginForm() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button variant="outline" className="w-full" onClick={resendVerification}>
-            Resend verification email
+          <Button variant="outline" className="w-full" onClick={resendVerification} disabled={resendCooldown > 0}>
+            {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend verification email'}
           </Button>
           {resent && <p className="mt-2 text-center text-sm text-primary">Sent again — check your inbox.</p>}
           <button className="mt-4 w-full text-sm text-primary" onClick={() => setPendingVerification(null)}>
