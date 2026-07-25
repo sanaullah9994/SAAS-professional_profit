@@ -4,7 +4,7 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Inpu
 import { authClient } from '@/lib/auth-client';
 import { PasswordRequirements, passwordMeetsRequirements } from './password-requirements';
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+const API = process.env.NEXT_PUBLIC_API_URL || '';
 
 export function AccountSecurity() {
   const [loading, setLoading] = useState(true);
