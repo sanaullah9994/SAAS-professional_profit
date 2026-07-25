@@ -20,20 +20,26 @@ export function DashboardOverview() {
   const [range, setRange] = useState(0);
   const [data, setData] = useState<DashboardOverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setError(false);
     fetchDashboardOverview(rangeDays[range] ?? 30).then((d) => {
-      if (!cancelled) {
+      if (cancelled) return;
+      if (d) {
         setData(d);
-        setLoading(false);
+      } else {
+        setError(true);
       }
+      setLoading(false);
     });
     return () => {
       cancelled = true;
     };
-  }, [range]);
+  }, [range, retryKey]);
 
   const summary = data?.summary;
   const trend = data?.trend ?? [];
@@ -67,7 +73,16 @@ export function DashboardOverview() {
         </div>
       </div>
 
-      {loading || !summary ? (
+      {!loading && error && (
+        <div className="mb-3.5 rounded-2xl border border-dashed border-border bg-card p-6 text-center text-sm font-semibold text-muted-foreground">
+          Couldn&rsquo;t load dashboard data.{' '}
+          <button type="button" onClick={() => setRetryKey((k) => k + 1)} className="font-semibold text-primary underline">
+            Try again
+          </button>
+        </div>
+      )}
+
+      {loading ? (
         <div className="mb-3.5 grid grid-cols-1 gap-3.5 sm:grid-cols-3">
           {[0, 1, 2].map((i) => (
             <div key={i} className="rounded-2xl border border-border bg-card p-5">
@@ -92,7 +107,7 @@ export function DashboardOverview() {
             </div>
           ))}
         </div>
-      ) : (
+      ) : !summary ? null : (
         <div className="mb-3.5 grid grid-cols-1 gap-3.5 sm:grid-cols-3">
           <SummaryCard
             label="Sales"
@@ -127,7 +142,7 @@ export function DashboardOverview() {
         </div>
       )}
 
-      {loading || !summary ? (
+      {loading ? (
         <div className="grid grid-cols-1 items-stretch gap-3.5 lg:grid-cols-[1.7fr_1fr]">
           <div className="flex min-h-[362px] flex-col rounded-2xl border border-border bg-card p-6">
             <div className="mb-6 flex items-center justify-between">
@@ -158,7 +173,7 @@ export function DashboardOverview() {
             ))}
           </div>
         </div>
-      ) : (
+      ) : !summary ? null : (
         <div className="grid grid-cols-1 items-stretch gap-3.5 lg:grid-cols-[1.7fr_1fr]">
           <div className="flex flex-col rounded-2xl border border-border bg-card p-6">
             <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
@@ -228,7 +243,7 @@ export function DashboardOverview() {
         </div>
       )}
 
-      {loading || !data ? (
+      {loading ? (
         <div className="mt-7 flex flex-col gap-5">
           <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-border bg-card p-5">
             <Skeleton className="h-[22px] w-28" />
@@ -242,7 +257,7 @@ export function DashboardOverview() {
             </div>
           ))}
         </div>
-      ) : (
+      ) : !data ? null : (
         <div className="mt-7">
           <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-border bg-card p-4.5">
             <h2 className="mr-2 text-xl font-extrabold tracking-tight">Products</h2>

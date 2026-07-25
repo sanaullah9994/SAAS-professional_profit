@@ -12,6 +12,10 @@ export const auth = betterAuth({
 
   database: pool,
 
+  // Required by @thallesp/nestjs-better-auth so the @BeforeHook providers in
+  // auth-hooks.service.ts get wired up — it populates this at runtime.
+  hooks: {},
+
   rateLimit: {
     enabled: true, // by default better-auth only rate-limits in production
     window: 60,

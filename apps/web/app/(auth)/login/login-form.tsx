@@ -7,6 +7,13 @@ import { authClient } from '@/lib/auth-client';
 import { checkEmail } from '@/lib/api';
 import { PasswordRequirements, passwordMeetsRequirements } from '@/components/auth/password-requirements';
 
+function safeRedirect(value: string | null): string {
+  // Must be a same-origin relative path — otherwise router.push() performs a real
+  // browser navigation to whatever external URL was passed in via ?redirect=.
+  if (!value || !value.startsWith('/') || value.startsWith('//')) return '/dashboard';
+  return value;
+}
+
 function GoogleIcon() {
   return (
     <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true">
@@ -21,7 +28,7 @@ function GoogleIcon() {
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirect') || '/dashboard';
+  const redirectTo = safeRedirect(searchParams.get('redirect'));
   const [mode, setMode] = useState<'in' | 'up'>(searchParams.get('mode') === 'up' ? 'up' : 'in');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<React.ReactNode>('');
@@ -138,12 +145,20 @@ export function LoginForm() {
     setError('');
     setGoogleLoading(true);
     try {
-      const r = await authClient.signIn.social({ provider: 'google', callbackURL: redirectTo });
+      const r = await authClient.signIn.social({ provider: 'google', callbackURL: `${window.location.origin}${redirectTo}` });
+      console.log('[googleSignIn] response:', r);
       if (r.error) {
         setError(r.error.message ?? 'Google sign-in failed');
         setGoogleLoading(false);
+      } else if (r.data?.url) {
+        window.location.href = r.data.url;
+      } else {
+        console.error('[googleSignIn] no url in response, data:', r.data);
+        setError('Failed to get Google sign-in URL');
+        setGoogleLoading(false);
       }
-    } catch {
+    } catch (err) {
+      console.error('[googleSignIn] exception:', err);
       setError('Something went wrong — check your connection and try again.');
       setGoogleLoading(false);
     }

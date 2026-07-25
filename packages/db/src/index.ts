@@ -6,9 +6,28 @@ export const pool = new Pool({
   connectionString,
   ssl: process.env.DATABASE_SSL === 'true' || connectionString.includes('neon.tech') ? { rejectUnauthorized: false } : undefined,
   max: Number(process.env.DATABASE_POOL_SIZE ?? 10),
+  idleTimeoutMillis: 30_000,
 });
-export const query = <T extends QueryResultRow = QueryResultRow>(text: string, params: readonly unknown[] = []) =>
-  pool.query<T>(text, [...params]);
+// Without a listener here, an idle pooled connection dropped by the server (e.g. Neon's
+// serverless compute recycling connections) throws an uncaught exception that crashes the process.
+pool.on('error', (err) => {
+  console.error('[db] idle client error', err);
+});
+
+const isRetryableConnectionError = (err: unknown) =>
+  err instanceof Error && /Connection terminated|ECONNRESET|ETIMEDOUT|connection closed|server closed the connection/i.test(err.message);
+
+export const query = async <T extends QueryResultRow = QueryResultRow>(text: string, params: readonly unknown[] = []) => {
+  try {
+    return await pool.query<T>(text, [...params]);
+  } catch (err) {
+    // A burst of concurrent queries against a cold pool (no warm connections after an idle
+    // period) occasionally fails to establish a new connection to the DB on the first attempt.
+    // One immediate retry reuses whichever connections the burst already opened and succeeds.
+    if (!isRetryableConnectionError(err)) throw err;
+    return await pool.query<T>(text, [...params]);
+  }
+};
 export async function transaction<T>(work: (client: PoolClient) => Promise<T>) {
   const client = await pool.connect();
   try { await client.query('BEGIN'); const result = await work(client); await client.query('COMMIT'); return result; }
