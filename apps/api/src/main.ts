@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
-const app=await NestFactory.create(AppModule,{bodyParser:false});
+const app=await NestFactory.create(AppModule);
 app.enableCors({origin:(process.env.TRUSTED_ORIGINS??'http://localhost:3000').split(','),credentials:true});
 app.useGlobalPipes(new ValidationPipe({whitelist:true,transform:true}));
 app.enableShutdownHooks();

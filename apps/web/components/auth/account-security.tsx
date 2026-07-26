@@ -4,8 +4,6 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Inpu
 import { authClient } from '@/lib/auth-client';
 import { PasswordRequirements, passwordMeetsRequirements } from './password-requirements';
 
-const API = process.env.NEXT_PUBLIC_API_URL || '';
-
 export function AccountSecurity() {
   const [loading, setLoading] = useState(true);
   const [hasPassword, setHasPassword] = useState(false);
@@ -93,7 +91,7 @@ function CreatePasswordCard({ onCreated }: { onCreated: () => void }) {
     if (!passwordMeetsRequirements(newPassword)) return setError('Password does not meet the requirements below.');
     if (newPassword !== confirm) return setError('Passwords do not match.');
     setSubmitting(true);
-    const res = await fetch(`${API}/v1/auth/set-password`, {
+    const res = await fetch('/api/v1/auth/set-password', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },

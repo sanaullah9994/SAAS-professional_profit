@@ -1,10 +1,3 @@
-import {summary,trend,skus} from './mock';
-const API=process.env.NEXT_PUBLIC_API_URL||'';
-async function safe<T>(path:string,fallback:T){try{const r=await fetch(API+path,{next:{revalidate:60}});return r.ok?await r.json() as T:fallback}catch{return fallback}}
-export const overviewData=()=>safe('/v1/dashboard/overview?days=30',{summary,trend,period:30});
-export const skuData=()=>safe('/v1/profit/skus?days=30',skus);
-
-// Seeded "Commercial Plastics" demo workspace — see packages/db/migrations/0002_traffic_and_demo_seed.sql
 const DEMO_WORKSPACE_ID='00000000-0000-0000-0000-000000000302';
 
 export type DashboardOverviewResponse={
@@ -19,19 +12,19 @@ export type TrafficRawRow={productId:string;sku:string;asin:string;title:string;
 
 async function getReal<T>(path:string):Promise<T|null>{
   try{
-    const r=await fetch(`${API}${path}${path.includes('?')?'&':'?'}workspaceId=${DEMO_WORKSPACE_ID}`,{cache:'no-store'});
+    const r=await fetch(`${path}${path.includes('?')?'&':'?'}workspaceId=${DEMO_WORKSPACE_ID}`,{cache:'no-store'});
     return r.ok?((await r.json()) as T):null;
   }catch{return null;}
 }
 
-export const fetchDashboardOverview=(days:number)=>getReal<DashboardOverviewResponse>(`/v1/dashboard/overview?days=${days}`);
-export const fetchProfitCalculator=(days:number)=>getReal<ProfitCalculatorRow[]>(`/v1/profit/calculator?days=${days}`);
-export const fetchTrafficRaw=(days:number)=>getReal<TrafficRawRow[]>(`/v1/traffic/raw?days=${days}`);
+export const fetchDashboardOverview=(days:number)=>getReal<DashboardOverviewResponse>(`/api/v1/dashboard/overview?days=${days}`);
+export const fetchProfitCalculator=(days:number)=>getReal<ProfitCalculatorRow[]>(`/api/v1/profit/calculator?days=${days}`);
+export const fetchTrafficRaw=(days:number)=>getReal<TrafficRawRow[]>(`/api/v1/traffic/raw?days=${days}`);
 
 export type EmailCheck={exists:boolean;providers:string[]};
 export async function checkEmail(email:string):Promise<EmailCheck>{
   try{
-    const r=await fetch(`${API}/v1/auth/check-email?email=${encodeURIComponent(email)}`,{cache:'no-store'});
+    const r=await fetch(`/api/v1/auth/check-email?email=${encodeURIComponent(email)}`,{cache:'no-store'});
     return r.ok?((await r.json()) as EmailCheck):{exists:false,providers:[]};
   }catch{return{exists:false,providers:[]};}
 }

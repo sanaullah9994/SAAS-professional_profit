@@ -44,12 +44,6 @@ importers:
       '@nestjs/platform-express':
         specifier: ^11.1.28
         version: 11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28)
-      '@thallesp/nestjs-better-auth':
-        specifier: ^2.7.0
-        version: 2.7.0(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28)(better-auth@1.6.23(next@16.2.10(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(pg@8.22.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(express@5.2.1)(qs@6.15.3)(typescript@6.0.3)
-      better-auth:
-        specifier: ^1.6.23
-        version: 1.6.23(next@16.2.10(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(pg@8.22.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       bullmq:
         specifier: ^5.80.2
         version: 5.80.2
@@ -93,6 +87,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@amazon-profit/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@amazon-profit/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -105,6 +102,9 @@ importers:
       better-auth:
         specifier: ^1.6.23
         version: 1.6.23(next@16.2.10(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(pg@8.22.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      csv-parse:
+        specifier: ^7.0.1
+        version: 7.0.1
       gsap:
         specifier: ^3.15.0
         version: 3.15.0
@@ -919,31 +919,6 @@ packages:
 
   '@tailwindcss/postcss@4.3.2':
     resolution: {integrity: sha512-rjVWYCa7Ngbi5AarT6k8TkxUG3Wl1QKzHdIZVsjZSzf36Jmo2IKZt/NHRAwly8oDkbBOH0YTu+CHuf9jPxMc+g==}
-
-  '@thallesp/nestjs-better-auth@2.7.0':
-    resolution: {integrity: sha512-Grq74scQ4AdEjrAr9mE8780u9N4fn+X/qz7DTHa/K37g+RPw+R3Yde4leRz/UIqsLx0o8p1B5wRGPnM65Q+ZsQ==}
-    engines: {node: '>=22.22.1'}
-    peerDependencies:
-      '@nestjs/common': ^11.1.6
-      '@nestjs/core': ^11.1.6
-      '@nestjs/graphql': ^13.1.0
-      '@nestjs/websockets': ^11.1.6
-      better-auth: '>=1.5.0 <2.0.0'
-      express: ^5.1.0
-      graphql: ^16.11.0
-      qs: ^6.14.0
-      typescript: ^5.9.2 || ^6.0.0
-    peerDependenciesMeta:
-      '@nestjs/graphql':
-        optional: true
-      '@nestjs/websockets':
-        optional: true
-      express:
-        optional: true
-      graphql:
-        optional: true
-      qs:
-        optional: true
 
   '@tokenizer/inflate@0.4.1':
     resolution: {integrity: sha512-2mAv+8pkG6GIZiF1kNg1jAjh27IDxEPKwdGul3snfztFerfPGI1LjDezZp3i7BElXompqEtPmoPx6c2wgtWsOA==}
@@ -2496,16 +2471,6 @@ snapshots:
       '@tailwindcss/oxide': 4.3.2
       postcss: 8.5.19
       tailwindcss: 4.3.2
-
-  '@thallesp/nestjs-better-auth@2.7.0(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28)(better-auth@1.6.23(next@16.2.10(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(pg@8.22.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(express@5.2.1)(qs@6.15.3)(typescript@6.0.3)':
-    dependencies:
-      '@nestjs/common': 11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/core': 11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      better-auth: 1.6.23(next@16.2.10(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(pg@8.22.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      typescript: 6.0.3
-    optionalDependencies:
-      express: 5.2.1
-      qs: 6.15.3
 
   '@tokenizer/inflate@0.4.1':
     dependencies:

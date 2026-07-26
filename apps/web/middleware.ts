@@ -7,7 +7,12 @@ import { getSessionCookie } from 'better-auth/cookies';
 const PUBLIC_PATHS = new Set(['/', '/pricing', '/login', '/forgot-password', '/reset-password', '/verify-email']);
 
 export function middleware(request: NextRequest) {
-  if (PUBLIC_PATHS.has(request.nextUrl.pathname)) return NextResponse.next();
+  const { pathname } = request.nextUrl;
+  // This middleware protects pages, not API routes — every route under /api
+  // manages its own access (better-auth's own routes, or intentionally public
+  // @OptionalAuth-equivalent data endpoints like /api/v1/dashboard/overview).
+  if (pathname.startsWith('/api/')) return NextResponse.next();
+  if (PUBLIC_PATHS.has(pathname)) return NextResponse.next();
 
   const sessionCookie = getSessionCookie(request);
   if (!sessionCookie) {

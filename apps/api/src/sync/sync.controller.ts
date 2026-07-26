@@ -1,5 +1,4 @@
 import { Body,Controller,Get,Injectable,OnModuleDestroy,Post,Query } from '@nestjs/common';
-import { OptionalAuth } from '@thallesp/nestjs-better-auth';
 import { Queue } from 'bullmq';
 import type { SyncJobData } from '@amazon-profit/types';
 import { getDateRange } from '@amazon-profit/utils';
@@ -13,7 +12,7 @@ export class SyncQueueService implements OnModuleDestroy{
   async add(data:Partial<SyncJobData>){const range=getDateRange(Number(process.env.INITIAL_SYNC_DAYS??90));const job=await this.queue.add('sync-account',{trigger:'manual',amazonAccountId:data.amazonAccountId??process.env.MOCK_AMAZON_ACCOUNT_ID,workspaceId:data.workspaceId??process.env.MOCK_WORKSPACE_ID,from:data.from??range.from,to:data.to??range.to},{attempts:5,backoff:{type:'exponential',delay:5000},removeOnComplete:{count:1000},removeOnFail:{count:1000}});return{jobId:job.id,status:'queued'}}
   async onModuleDestroy(){await this.queue.close();await this.connection.quit()}
 }
-@Controller('v1/sync') @OptionalAuth()
+@Controller('v1/sync')
 export class SyncController{
   constructor(private queue:SyncQueueService){}
   @Post() add(@Body() body:Partial<SyncJobData>){return this.queue.add(body)}

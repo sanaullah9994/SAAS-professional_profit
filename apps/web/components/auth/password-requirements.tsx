@@ -1,20 +1,9 @@
 'use client';
 import { Check, X } from 'lucide-react';
 import { cn } from '@amazon-profit/utils';
+import { rules, passwordMeetsRequirements } from '@/lib/password-rules';
 
-const SPECIAL_CHAR = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/;
-
-export const rules = [
-  { label: '8–128 characters', test: (p: string) => p.length >= 8 && p.length <= 128 },
-  { label: 'One uppercase letter', test: (p: string) => /[A-Z]/.test(p) },
-  { label: 'One lowercase letter', test: (p: string) => /[a-z]/.test(p) },
-  { label: 'One number', test: (p: string) => /[0-9]/.test(p) },
-  { label: 'One special character', test: (p: string) => SPECIAL_CHAR.test(p) },
-];
-
-export function passwordMeetsRequirements(password: string) {
-  return rules.every((r) => r.test(password));
-}
+export { rules, passwordMeetsRequirements };
 
 export function PasswordRequirements({ password }: { password: string }) {
   return (
