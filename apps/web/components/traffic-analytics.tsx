@@ -16,6 +16,7 @@ import {
 import { ShoppingCart } from 'lucide-react';
 import { cn, formatCurrency, formatPercent } from '@amazon-profit/utils';
 import { fetchTrafficRaw, type TrafficRawRow } from '@/lib/api';
+import { useChartReveal } from '@/lib/chart-animate';
 
 const ranges = ['Last 7 days', 'Last 14 days', 'This month', 'Last month', 'Custom range'];
 const rangeDays = [7, 14, 30, 60, 90];
@@ -222,6 +223,8 @@ export function TrafficAnalytics() {
     ? chartDays.map((d, i) => `${(((i + 0.5) / Math.max(1, chartDays.length)) * 100).toFixed(2)},${mTop(d.usp).toFixed(2)}`).join(' ')
     : '';
 
+  const chartRef = useChartReveal<HTMLDivElement>([loading, range, selected]);
+
   const pq = prodSearch.trim().toLowerCase();
   const products = chosen.filter(
     (p) => !pq || p.title.toLowerCase().includes(pq) || p.asin.toLowerCase().includes(pq) || p.sku.toLowerCase().includes(pq),
@@ -379,7 +382,7 @@ export function TrafficAnalytics() {
                 </div>
               ))}
             </div>
-            <div className="absolute left-10 right-10 top-0 bottom-[22px]">
+            <div ref={chartRef} className="absolute left-10 right-10 top-0 bottom-[22px]">
               {leftTicks.map((t, i) => (
                 <div key={i} className="absolute inset-x-0 h-px bg-border/60" style={{ top: t.top }} />
               ))}
@@ -398,12 +401,14 @@ export function TrafficAnalytics() {
                   <div key={`${d.label}-${i}`} className="relative flex-1">
                     {d.show && (
                       <div
+                        data-chart-bar
                         className="absolute bottom-0 left-[27%] w-[46%] bg-primary"
                         style={{ height: `${d.orgPct}%`, borderRadius: d.pd > 0 ? 0 : '4px 4px 0 0' }}
                       />
                     )}
                     {d.show && d.pd > 0 && (
                       <div
+                        data-chart-bar
                         className="absolute left-[27%] w-[46%] rounded-t-md bg-amber-500"
                         style={{ bottom: `${d.orgPct}%`, height: `${d.paidPct}%` }}
                       />

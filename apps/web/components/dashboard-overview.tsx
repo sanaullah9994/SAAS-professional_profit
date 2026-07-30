@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ArrowUpRight, ExternalLink, PlayCircle, Receipt, TrendingUp } from 'lucide-react';
 import { cn, formatCurrency, formatPercent } from '@amazon-profit/utils';
 import { fetchDashboardOverview, type DashboardOverviewResponse } from '@/lib/api';
+import { useChartReveal } from '@/lib/chart-animate';
 
 const ranges = ['Today', 'Yesterday', 'This month', 'Last month', 'Custom range'];
 const rangeDays = [1, 2, 30, 60, 90];
@@ -46,6 +47,7 @@ export function DashboardOverview() {
   const expenses = data?.expenses;
   const products = data?.products ?? [];
   const maxRevenue = Math.max(1, ...trend.map((t) => t.revenue));
+  const chartRef = useChartReveal<HTMLDivElement>([loading]);
 
   return (
     <div>
@@ -195,10 +197,11 @@ export function DashboardOverview() {
                     <div key={i} className={cn('h-px', i === 4 ? 'bg-border' : 'bg-border/60')} />
                   ))}
                 </div>
-                <div className="absolute inset-x-0 bottom-5 top-0 flex items-end justify-around px-[4%]">
+                <div ref={chartRef} className="absolute inset-x-0 bottom-5 top-0 flex items-end justify-around px-[4%]">
                   {trend.map((b) => (
                     <div key={b.date} className="flex h-full w-full flex-col items-center justify-end">
                       <div
+                        data-chart-bar
                         className="w-[min(46px,60%)] rounded-t-md"
                         style={{ height: `${(b.revenue / maxRevenue) * 100}%`, background: 'var(--primary)' }}
                         title={formatCurrency(b.revenue)}
