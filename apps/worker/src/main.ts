@@ -1,22 +1,25 @@
 import 'dotenv/config';
-import IORedis from 'ioredis';
+import { Redis } from 'ioredis';
 import { Queue,Worker,type Job } from 'bullmq';
 import { pool,query,transaction } from '@amazon-profit/db';
 import type { SyncJobData } from '@amazon-profit/types';
 import { calculateProfit,getDateRange } from '@amazon-profit/utils';
+import { syncLiveAccount } from './amazon-sync.js';
 const prefix=process.env.QUEUE_PREFIX??'amazon-profit';
-const connection=new IORedis(process.env.REDIS_URL??'redis://localhost:6379',{
+const connection=new Redis(process.env.REDIS_URL??'redis://localhost:6379',{
   maxRetriesPerRequest:null,
   enableReadyCheck:false,
   retryStrategy:times=>Math.min(times*200,5000),
   lazyConnect:true,
 });
 connection.on('error',()=>{});
-const queue=new Queue<SyncJobData>('amazon-sync',{connection,prefix});
+const queue=new Queue<SyncJobData>('amazon-sync',{connection,prefix,defaultJobOptions:{attempts:5,backoff:{type:'exponential',delay:5000},removeOnComplete:{count:1000},removeOnFail:{count:1000}}});
 async function sync(job:Job<SyncJobData>){
-  const range=getDateRange(Number(process.env.INITIAL_SYNC_DAYS??90));
   const account=job.data.amazonAccountId??process.env.MOCK_AMAZON_ACCOUNT_ID!;
   const workspace=job.data.workspaceId??process.env.MOCK_WORKSPACE_ID!;
+  const existing=(await query<{provider_mode:string}>('SELECT provider_mode FROM amazon_accounts WHERE id=$1',[account])).rows[0];
+  if(existing&&existing.provider_mode!=='mock')return syncLiveAccount(job);
+  const range=getDateRange(Number(process.env.INITIAL_SYNC_DAYS??90));
   const run=(await query<{id:string}>(`INSERT INTO sync_runs(amazon_account_id,workspace_id,trigger,status,from_date,to_date,started_at) VALUES($1,$2,$3,'running',$4,$5,now()) RETURNING id::text`,[account,workspace,job.data.trigger,job.data.from??range.from,job.data.to??range.to])).rows[0]!.id;
   try{
     const products=(await query<any>('SELECT id::text,sku,asin FROM products WHERE amazon_account_id=$1',[account])).rows;
@@ -38,7 +41,7 @@ async function sync(job:Job<SyncJobData>){
 const worker=new Worker<SyncJobData>('amazon-sync',async job=>{
   if(job.name==='sync-all-accounts'){const accounts=(await query<any>(`SELECT id::text,workspace_id::text FROM amazon_accounts WHERE status='connected'`)).rows;const range=getDateRange(2);for(const a of accounts)await queue.add('sync-account',{trigger:'scheduled',amazonAccountId:a.id,workspaceId:a.workspace_id,...range});return{queued:accounts.length}}
   return sync(job);
-},{connection,prefix,concurrency:Number(process.env.WORKER_CONCURRENCY??4)});
+},{connection,prefix,concurrency:Number(process.env.WORKER_CONCURRENCY??4),limiter:{max:Number(process.env.WORKER_JOBS_PER_SECOND??4),duration:1000}});
 worker.on('completed',j=>console.log('[worker] completed',j.id));
 worker.on('failed',(j,e)=>console.error('[worker] failed',j?.id,e));
 console.log('[worker] started');

@@ -3,15 +3,17 @@ import { useEffect, useState } from 'react';
 import { ArrowUpRight, Pencil, RefreshCw, Search } from 'lucide-react';
 import { cn } from '@amazon-profit/utils';
 import { AccountSecurity } from '@/components/auth/account-security';
+import { fetchAccounts, type AccountRow } from '@/lib/api';
 
 type Account = { name: string; marketplace: string; spApi: 'Active' | 'Expired'; adApi: 'Active' | 'Expired' };
 
-// TODO: replace with connected Amazon accounts from the DB
-const ACCOUNTS: Account[] = [
-  '360 Nutrition', 'Age With Ease', 'Aloe Attiva', 'Amber NaturalZ', 'Asozi',
-  'Awkward Essentials', 'BE+Well', 'Beast Sports Nutrition', 'Cymbiotika', 'Nature Made',
-  'Optimum Nutrition', 'Pure Encapsulations', 'Thorne',
-].map((name, i) => ({ name, marketplace: 'North America', spApi: 'Active', adApi: i === 4 ? 'Expired' : 'Active' }) as Account);
+const marketplaceLabel = (id: string) => (id === 'ATVPDKIKX0DER' ? 'North America' : id);
+const toAccount = (a: AccountRow): Account => ({
+  name: a.display_name,
+  marketplace: marketplaceLabel(a.marketplace_id),
+  spApi: a.status === 'connected' ? 'Active' : 'Expired',
+  adApi: a.ads_status === 'connected' ? 'Active' : 'Expired',
+});
 
 function Skeleton({ className }: { className?: string }) {
   return <div className={cn('pp-skeleton', className)} />;
@@ -32,12 +34,20 @@ function StatusBadge({ status }: { status: 'Active' | 'Expired' }) {
 
 export function SettingsPage() {
   const [loading, setLoading] = useState(true);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [search, setSearch] = useState('');
   const [spinning, setSpinning] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 1000);
-    return () => clearTimeout(t);
+    let cancelled = false;
+    fetchAccounts().then((rows) => {
+      if (cancelled) return;
+      setAccounts((rows ?? []).map(toAccount));
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function refresh(key: string) {
@@ -46,16 +56,19 @@ export function SettingsPage() {
   }
 
   const q = search.trim().toLowerCase();
-  const filtered = ACCOUNTS.filter((a) => !q || a.name.toLowerCase().includes(q));
+  const filtered = accounts.filter((a) => !q || a.name.toLowerCase().includes(q));
 
   return (
     <div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-5">
         <h1 className="text-[26px] font-extrabold tracking-tight">Accounts</h1>
-        <button className="flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground transition hover:opacity-90">
+        <a
+          href="/api/v1/amazon/connections/seller-central/authorize"
+          className="flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground transition hover:opacity-90"
+        >
           Connect Amazon Account
           <ArrowUpRight className="size-3.5" />
-        </button>
+        </a>
       </div>
 
       <div className="relative mb-4.5 max-w-[420px]">

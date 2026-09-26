@@ -2,22 +2,12 @@
 import { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, ArrowUpDown, Check, Download, ExternalLink, PlayCircle, Search, Upload, PencilLine } from 'lucide-react';
 import { cn } from '@amazon-profit/utils';
+import { fetchProducts, saveCogs, setProductActive, type ProductRow } from '@/lib/api';
 
-type Product = { id: number; title: string; child: string; sku: string; status: 'Active' | 'Inactive'; cogs: number };
+type Product = { id: string; title: string; sku: string; asin: string; status: 'Active' | 'Inactive'; cogs: number };
 
-// TODO: replace with products fetched from the connected account / DB
-const CATALOG: Product[] = [
-  { id: 1, title: 'XEELA Plant Based Vegan Protein Powder - Chocolate', child: 'B0CCYY7KR8', sku: 'XL-PROT-CHOC', status: 'Active', cogs: 8.4 },
-  { id: 2, title: 'XEELA Plant Based Vegan Protein Powder - Vanilla', child: 'B0CCYY7KR8', sku: 'XL-PROT-VAN-FBA', status: 'Inactive', cogs: 8.4 },
-  { id: 3, title: 'XEELA Pre Workout Powder - Blue Raspberry', child: 'B0C680KZV1', sku: 'XL-PRE-BLUE', status: 'Active', cogs: 4.15 },
-  { id: 4, title: 'XEELA Pre Workout Powder - Tropical', child: 'B0C680KZV1', sku: 'XL-PRE-TROP-FBM', status: 'Inactive', cogs: 4.15 },
-  { id: 5, title: 'XEELA Creatine Monohydrate (Unflavored)', child: 'B0CCMCRX6Q', sku: 'XL-CRE-UNF', status: 'Active', cogs: 6.2 },
-  { id: 6, title: 'XEELA Apple Cider Vinegar Capsules w/ The Mother', child: 'B0CDXZZK8B', sku: 'XL-ACV-120', status: 'Active', cogs: 3.75 },
-  { id: 7, title: 'XEELA BCAA Amino Energy Powder - Citrus', child: 'B0CN1YAB2K', sku: 'XL-BCAA-CIT', status: 'Inactive', cogs: 5.05 },
-  { id: 8, title: 'XEELA Greens Super Blend - 30 Servings', child: 'B0E1KXX730', sku: 'XL-GRN-30', status: 'Active', cogs: 7.1 },
-];
-
-const initials = (title: string) => title.replace(/^XEELA\s*/i, '').slice(0, 2).toUpperCase();
+const toProduct = (p: ProductRow): Product => ({ id: p.id, title: p.title, sku: p.sku, asin: p.asin, status: p.active ? 'Active' : 'Inactive', cogs: p.cogs });
+const initials = (title: string) => title.slice(0, 2).toUpperCase();
 
 type SortKey = 'item' | 'status' | 'cogs';
 
@@ -27,17 +17,23 @@ function Skeleton({ className }: { className?: string }) {
 
 export function ProductsCogsPage() {
   const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('item');
   const [sortDir, setSortDir] = useState(1);
-  const [editId, setEditId] = useState<number | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-  const [overrides, setOverrides] = useState<Record<number, number>>({});
-  const [statusOverrides, setStatusOverrides] = useState<Record<number, 'Active' | 'Inactive'>>({});
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 1100);
-    return () => clearTimeout(t);
+    let cancelled = false;
+    fetchProducts().then((rows) => {
+      if (cancelled) return;
+      setProducts((rows ?? []).map(toProduct));
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function setSort(key: SortKey) {
@@ -48,30 +44,33 @@ export function ProductsCogsPage() {
     }
   }
 
-  function startEdit(id: number, cur: number) {
+  function startEdit(id: string, cur: number) {
     setEditId(id);
     setEditValue(cur.toFixed(2));
   }
 
-  function saveEdit(id: number) {
+  function saveEdit(id: string, sku: string) {
     const v = parseFloat(editValue);
-    if (!isNaN(v)) setOverrides((o) => ({ ...o, [id]: v }));
     setEditId(null);
     setEditValue('');
+    if (isNaN(v)) return;
+    const prev = products.find((p) => p.id === id)?.cogs;
+    setProducts((ps) => ps.map((p) => (p.id === id ? { ...p, cogs: v } : p)));
+    saveCogs(sku, v).then((ok) => {
+      if (!ok && prev !== undefined) setProducts((ps) => ps.map((p) => (p.id === id ? { ...p, cogs: prev } : p)));
+    });
   }
 
-  function toggleStatus(id: number, cur: 'Active' | 'Inactive') {
-    setStatusOverrides((s) => ({ ...s, [id]: cur === 'Active' ? 'Inactive' : 'Active' }));
+  function toggleStatus(id: string, cur: 'Active' | 'Inactive') {
+    const next = cur === 'Active' ? 'Inactive' : 'Active';
+    setProducts((ps) => ps.map((p) => (p.id === id ? { ...p, status: next } : p)));
+    setProductActive(id, next === 'Active').then((ok) => {
+      if (!ok) setProducts((ps) => ps.map((p) => (p.id === id ? { ...p, status: cur } : p)));
+    });
   }
-
-  const data = CATALOG.map((p) => ({
-    ...p,
-    cogs: overrides[p.id] ?? p.cogs,
-    status: statusOverrides[p.id] ?? p.status,
-  }));
 
   const q = search.trim().toLowerCase();
-  const filtered = data.filter((p) => !q || p.title.toLowerCase().includes(q) || p.child.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
+  const filtered = products.filter((p) => !q || p.title.toLowerCase().includes(q) || p.asin.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
 
   filtered.sort((a, b) => {
     let av: string | number;
@@ -119,7 +118,7 @@ export function ProductsCogsPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by a Title, Parent, Child, SKU…"
+            placeholder="Search by a Title, ASIN, SKU…"
             className="w-full rounded-xl border border-border bg-card py-3.5 pl-10 pr-3.5 text-sm font-medium text-foreground outline-none focus:border-primary"
           />
         </div>
@@ -168,7 +167,7 @@ export function ProductsCogsPage() {
                   <div className="min-w-0">
                     <div className="truncate text-[14.5px] font-bold text-foreground">{p.title}</div>
                     <div className="mt-0.5 truncate text-[11.5px] font-semibold text-muted-foreground">
-                      CHILD: {p.child} / SKU: {p.sku}
+                      ASIN: {p.asin} / SKU: {p.sku}
                     </div>
                   </div>
                 </div>
@@ -193,7 +192,7 @@ export function ProductsCogsPage() {
                           value={editValue}
                           onChange={(e) => setEditValue(e.target.value.replace(/[^0-9.]/g, ''))}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter') saveEdit(p.id);
+                            if (e.key === 'Enter') saveEdit(p.id, p.sku);
                             if (e.key === 'Escape') {
                               setEditId(null);
                               setEditValue('');
@@ -203,7 +202,7 @@ export function ProductsCogsPage() {
                         />
                       </div>
                       <button
-                        onClick={() => saveEdit(p.id)}
+                        onClick={() => saveEdit(p.id, p.sku)}
                         className="flex size-[34px] items-center justify-center rounded-lg bg-primary transition hover:opacity-90"
                       >
                         <Check className="size-4 text-primary-foreground" strokeWidth={2.4} />

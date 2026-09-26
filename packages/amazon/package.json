@@ -1,0 +1,19 @@
+{
+  "name": "@amazon-profit/amazon",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "node -e \"console.log('amazon: lint via TypeScript')\"",
+    "test": "node -e \"console.log('amazon: tests later')\"",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": { "dotenv": "^17.4.2" },
+  "devDependencies": { "@types/node": "^26.1.1", "typescript": "^6.0.3" }
+}

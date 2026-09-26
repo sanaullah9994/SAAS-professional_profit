@@ -124,6 +124,126 @@ export async function getSkuProfitability(workspaceId: string, days = 30) {
     amazonFees:num(r.amazon_fees),adSpend:num(r.ad_spend),cogs:num(r.cogs),refunds:num(r.refunds),
     netProfit,marginPercent:revenue?netProfit/revenue*100:0};});
 }
+export async function getPpcCampaigns(workspaceId: string, days = 30) {
+  const { rows } = await query<any>(`SELECT a.campaign_id,a.campaign_name,a.campaign_type,
+    COALESCE(SUM(a.spend),0) spend, COALESCE(SUM(a.attributed_sales),0) sales
+    FROM ad_spend_daily a JOIN amazon_accounts acc ON acc.id=a.amazon_account_id
+    WHERE acc.workspace_id=$1 AND a.campaign_id<>'CMP-UNATTR' AND a.date>=current_date-($2::int-1)
+    GROUP BY a.campaign_id,a.campaign_name,a.campaign_type ORDER BY SUM(a.spend) DESC`, [workspaceId, days]);
+  return rows.map((r: any) => {
+    const spend = num(r.spend), sales = num(r.sales);
+    return { campaign: r.campaign_name, type: r.campaign_type, spend, sales, acosPercent: sales ? (spend / sales) * 100 : 0, roas: spend ? sales / spend : 0 };
+  });
+}
+
+// Product Code shown on Inventory/Performance is derived from the SKU itself (2nd hyphen
+// segment, e.g. "CP-ABS-BLK-2436" -> "ABS") — there's no separate product-code concept in
+// the schema, and with only 5 demo SKUs a real grouping table would be overkill.
+const skuCode = (sku: string) => sku.split('-')[1] ?? sku;
+
+export async function getInventory(workspaceId: string) {
+  const { rows } = await query<any>(`SELECT p.id,p.sku,p.asin,p.title,
+    s.date::text date, s.sellable, s.reserved, s.pending, s.unsellable,
+    COALESCE(pd.units,0) units, COALESCE(ch.unit_cogs,0) unit_cogs
+    FROM products p
+    JOIN amazon_accounts a ON a.id=p.amazon_account_id
+    LEFT JOIN fba_inventory_snapshots s ON s.product_id=p.id AND s.date>=current_date-29
+    LEFT JOIN profit_daily pd ON pd.product_id=p.id AND pd.date=s.date
+    LEFT JOIN cogs_history ch ON ch.workspace_id=a.workspace_id AND ch.sku=p.sku
+    WHERE a.workspace_id=$1 ORDER BY p.sku,s.date`, [workspaceId]);
+
+  const byProduct = new Map<string, any>();
+  for (const r of rows) {
+    let p = byProduct.get(r.id);
+    if (!p) {
+      p = { id: r.id, name: r.title, sku: r.sku, child: r.asin, code: skuCode(r.sku), unitCogs: num(r.unit_cogs), daily: [] as { date: string; units: number; stock: number }[] };
+      byProduct.set(r.id, p);
+    }
+    if (r.date) p.daily.push({ date: r.date, units: num(r.units), stock: num(r.sellable) });
+    if (r.date) p.latest = { sellable: num(r.sellable), reserved: num(r.reserved), pending: num(r.pending), unsellable: num(r.unsellable) };
+  }
+  return Array.from(byProduct.values()).map((p) => {
+    const latest = p.latest ?? { sellable: 0, reserved: 0, pending: 0, unsellable: 0 };
+    const sold30 = p.daily.reduce((a: number, d: any) => a + d.units, 0);
+    const dailyAvg = sold30 / 30;
+    const daysCoverage = dailyAvg > 0 ? Math.round((latest.sellable + latest.pending) / dailyAvg) : 999;
+    return {
+      id: p.id, name: p.name, sku: p.sku, code: p.code, child: p.child,
+      sellable: latest.sellable, reserved: latest.reserved, pending: latest.pending, unsellable: latest.unsellable,
+      value: Math.round(latest.sellable * p.unitCogs), sold30, daysCoverage, daily: p.daily,
+    };
+  });
+}
+
+export async function getPerformanceDaily(workspaceId: string, days = 90, code?: string) {
+  const { rows } = await query<any>(`SELECT a.date::text date,
+    COALESCE(SUM(a.spend),0) spend, COALESCE(SUM(a.attributed_sales),0) sales,
+    COALESCE(SUM(a.impressions),0) impressions, COALESCE(SUM(a.clicks),0) clicks, COALESCE(SUM(a.attributed_orders),0) orders
+    FROM ad_spend_daily a
+    JOIN amazon_accounts acc ON acc.id=a.amazon_account_id
+    LEFT JOIN products p ON p.id=a.product_id
+    WHERE acc.workspace_id=$1 AND a.campaign_id<>'CMP-UNATTR' AND a.date>=current_date-($2::int-1)
+      AND ($3::text IS NULL OR $3='All' OR split_part(p.sku,'-',2)=$3)
+    GROUP BY a.date ORDER BY a.date`, [workspaceId, days, code && code !== 'All' ? code : null]);
+  return rows.map((r: any) => {
+    const spend = num(r.spend), sales = num(r.sales), clicks = num(r.clicks), impressions = num(r.impressions), orders = num(r.orders);
+    return {
+      date: r.date, spend, sales,
+      conv: clicks ? (orders / clicks) * 100 : 0,
+      ctr: impressions ? (clicks / impressions) * 100 : 0,
+      acos: sales ? (spend / sales) * 100 : 0,
+      cpc: clicks ? spend / clicks : 0,
+    };
+  });
+}
+
+export async function getPerformanceMonthly(workspaceId: string, code?: string) {
+  const { rows } = await query<any>(`SELECT to_char(pd.date,'YYYY-MM') AS period,
+    COALESCE(SUM(pd.product_revenue),0) revenue, COALESCE(SUM(pd.net_profit),0) profit
+    FROM profit_daily pd
+    LEFT JOIN products p ON p.id=pd.product_id
+    WHERE pd.workspace_id=$1 AND pd.product_id IS NOT NULL
+      AND ($2::text IS NULL OR $2='All' OR split_part(p.sku,'-',2)=$2)
+    GROUP BY period ORDER BY period`, [workspaceId, code && code !== 'All' ? code : null]);
+  const { rows: ppcRows } = await query<any>(`SELECT to_char(a.date,'YYYY-MM') AS period, COALESCE(SUM(a.attributed_sales),0) ppc_sales
+    FROM ad_spend_daily a JOIN amazon_accounts acc ON acc.id=a.amazon_account_id LEFT JOIN products p ON p.id=a.product_id
+    WHERE acc.workspace_id=$1 AND a.campaign_id<>'CMP-UNATTR'
+      AND ($2::text IS NULL OR $2='All' OR split_part(p.sku,'-',2)=$2)
+    GROUP BY period`, [workspaceId, code && code !== 'All' ? code : null]);
+  const ppcByMonth = new Map(ppcRows.map((r: any) => [r.period, num(r.ppc_sales)]));
+  return rows.map((r: any) => {
+    const revenue = num(r.revenue), profit = num(r.profit);
+    const ppcSales = Math.min(revenue, (ppcByMonth.get(r.period) as number) ?? 0);
+    const orgSales = Math.max(0, revenue - ppcSales);
+    const ppcProfit = revenue ? profit * (ppcSales / revenue) : 0;
+    const orgProfit = profit - ppcProfit;
+    return { month: r.period, salesPpc: ppcSales, salesOrg: orgSales, profitPpc: ppcProfit, profitOrg: orgProfit };
+  });
+}
+
+export async function getSkuCodes(workspaceId: string) {
+  const { rows } = await query<any>(
+    `SELECT DISTINCT split_part(p.sku,'-',2) AS code
+     FROM products p
+     JOIN amazon_accounts a ON a.id=p.amazon_account_id
+     WHERE a.workspace_id=$1 AND position('-' in p.sku) > 0
+     ORDER BY 1`,
+    [workspaceId]);
+  return rows.map((r: any) => String(r.code ?? '')).filter((c: string) => c.length > 0);
+}
+export async function getProducts(workspaceId: string) {
+  const { rows } = await query<any>(`SELECT p.id,p.sku,p.asin,p.title,p.active,
+    COALESCE(ch.unit_cogs,0) unit_cogs
+    FROM products p
+    JOIN amazon_accounts a ON a.id=p.amazon_account_id
+    LEFT JOIN LATERAL (SELECT unit_cogs FROM cogs_history WHERE workspace_id=a.workspace_id AND sku=p.sku ORDER BY effective_from DESC LIMIT 1) ch ON true
+    WHERE a.workspace_id=$1 ORDER BY p.title`, [workspaceId]);
+  return rows.map((r: any) => ({ id: r.id, title: r.title, sku: r.sku, asin: r.asin, active: r.active as boolean, cogs: num(r.unit_cogs) }));
+}
+export async function setProductActive(productId: string, active: boolean) {
+  await query(`UPDATE products SET active=$2,updated_at=now() WHERE id=$1`, [productId, active]);
+}
+
 export async function listTable(table: 'orders'|'refunds'|'cogs_history'|'sync_runs'|'alerts'|'amazon_accounts', workspaceId: string) {
   const sql: Record<string,string> = {
     orders:`SELECT o.amazon_order_id,o.purchase_date,o.order_status,COALESCE(SUM(oi.quantity),0) units,COALESCE(SUM(oi.product_revenue),0) revenue FROM orders o JOIN amazon_accounts a ON a.id=o.amazon_account_id LEFT JOIN order_items oi ON oi.order_id=o.id WHERE a.workspace_id=$1 GROUP BY o.id ORDER BY o.purchase_date DESC LIMIT 50`,

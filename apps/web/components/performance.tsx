@@ -3,73 +3,33 @@ import { useEffect, useState } from 'react';
 import { ChevronDown, PlayCircle } from 'lucide-react';
 import { cn } from '@amazon-profit/utils';
 import { useChartReveal } from '@/lib/chart-animate';
+import { fetchPerformance, type PerformanceDailyRow, type PerformanceMonthlyRow } from '@/lib/api';
 
-type Metric = { key: string; title: string; base: number; spread: number; unit: '%' | '$'; dec: number; higherBetter: boolean };
+type MetricKey = 'conv' | 'ctr' | 'acos' | 'cpc';
+type Metric = { key: MetricKey; title: string; unit: '%' | '$'; dec: number; higherBetter: boolean };
 
-// TODO: replace with metrics fetched from the connected account / DB
 const METRICS: Metric[] = [
-  { key: 'conv', title: 'Conversion Rate', base: 9.2, spread: 2.4, unit: '%', dec: 2, higherBetter: true },
-  { key: 'ctr', title: 'CTR', base: 0.92, spread: 0.32, unit: '%', dec: 2, higherBetter: true },
-  { key: 'acos', title: 'ACOS', base: 27, spread: 6, unit: '%', dec: 1, higherBetter: false },
-  { key: 'cpc', title: 'Cost per Click', base: 1.35, spread: 0.4, unit: '$', dec: 2, higherBetter: false },
+  { key: 'conv', title: 'Conversion Rate', unit: '%', dec: 2, higherBetter: true },
+  { key: 'ctr', title: 'CTR', unit: '%', dec: 2, higherBetter: true },
+  { key: 'acos', title: 'ACOS', unit: '%', dec: 1, higherBetter: false },
+  { key: 'cpc', title: 'Cost per Click', unit: '$', dec: 2, higherBetter: false },
 ];
-
-const CODES = ['All', 'PRE', 'PRO', 'CRE', 'GRN', 'BCAA'];
-
-const ovMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'];
-const salesPpc = [25790, 66224, 96187, 85441, 75703, 80115, 12480];
-const salesOrg = [21591, 30463, 67098, 93737, 107623, 145416, 152464];
-const profitPpc = salesPpc.map((v) => v * 0.17);
-const profitOrg = salesOrg.map((v) => v * 0.34);
-
-function codeSeed(code: string) {
-  let s = 7;
-  for (let i = 0; i < code.length; i++) s = (s * 31 + code.charCodeAt(i)) % 9973;
-  return s + 1;
-}
-
-function series(seed: number, base: number, spread: number, n: number) {
-  let rnd = seed;
-  const rng = () => {
-    rnd = (rnd * 9301 + 49297) % 233280;
-    return rnd / 233280;
-  };
-  const out: number[] = [];
-  let v = base + (rng() - 0.5) * spread;
-  for (let i = 0; i < 90; i++) {
-    v += (rng() - 0.5) * spread * 0.9;
-    v = Math.max(base * 0.35, Math.min(base * 1.9, v));
-    out.push(v);
-  }
-  return out.slice(90 - n);
-}
 
 function fmt(v: number, m: Metric) {
   return m.unit === '$' ? '$' + v.toFixed(m.dec) : v.toFixed(m.dec) + '%';
 }
+const shortDate = (iso: string) => new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+const monthLabel = (ym: string) => new Date(ym + '-02').toLocaleDateString('en-US', { month: 'short' });
 
-function dateLabels(n: number, count: number) {
-  const end = new Date(2026, 6, 26);
-  const mo = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const out: string[] = [];
-  for (let k = 0; k < count; k++) {
-    const idx = Math.round((k / (count - 1)) * (n - 1));
-    const d = new Date(end);
-    d.setDate(end.getDate() - (n - 1 - idx));
-    out.push(`${mo[d.getMonth()] ?? ''} ${d.getDate()}`);
-  }
-  return out;
-}
-
-function buildChart(m: Metric, n: number, seed: number, code: string, big: boolean) {
-  const codeFactor = code === 'All' ? 1 : 0.75 + (codeSeed(code) % 50) / 100;
-  const data = series(seed + codeSeed(code), m.base * codeFactor, m.spread, n);
+function buildChart(m: Metric, rows: PerformanceDailyRow[]) {
+  const data = rows.length ? rows.map((r) => r[m.key]) : [0];
+  const n = data.length;
   const lo = Math.min(...data);
   const hi = Math.max(...data);
-  const pad = Math.max((hi - lo) * 0.25, m.base * 0.08);
+  const pad = Math.max((hi - lo) * 0.25, hi * 0.08, 0.5);
   const yMin = Math.max(0, lo - pad);
   const yMax = hi + pad;
-  const topOf = (v: number) => (1 - (v - yMin) / (yMax - yMin)) * 100;
+  const topOf = (v: number) => (yMax === yMin ? 50 : (1 - (v - yMin) / (yMax - yMin)) * 100);
   const xOf = (i: number) => (n === 1 ? 50 : (i / (n - 1)) * 100);
 
   const ticks = Array.from({ length: 6 }, (_, k) => {
@@ -79,12 +39,10 @@ function buildChart(m: Metric, n: number, seed: number, code: string, big: boole
   const line = data.map((v, i) => `${xOf(i).toFixed(2)},${topOf(v).toFixed(2)}`).join(' ');
   const area = `0,100 ${line} 100,100`;
 
-  const labelEvery = n <= 10 ? 1 : big ? Math.ceil(n / 12) : Math.ceil(n / 6);
+  const labelEvery = n <= 10 ? 1 : Math.ceil(n / 8);
   const points = data.map((v, i) => {
-    const x = xOf(i);
-    const y = topOf(v);
     const showLabel = i % labelEvery === 0 || i === n - 1;
-    return { x, y, showLabel, label: fmt(v, m) };
+    return { x: xOf(i), y: topOf(v), showLabel, label: fmt(v, m) };
   });
 
   const first = data[0] ?? 0;
@@ -93,28 +51,32 @@ function buildChart(m: Metric, n: number, seed: number, code: string, big: boole
   const good = m.higherBetter ? deltaPct >= 0 : deltaPct <= 0;
   const delta = `${deltaPct >= 0 ? '+' : ''}${deltaPct.toFixed(1)}%`;
 
-  return { title: m.title, current: fmt(last, m), delta, good, ticks, line, area, points, xLabels: dateLabels(n, 6) };
+  const dates = rows.map((r) => r.date);
+  const labelIdx = dates.length > 1 ? [0, 1, 2, 3, 4, 5].map((k) => Math.round((k / 5) * (dates.length - 1))) : [0];
+  const xLabels = labelIdx.map((i) => (dates[i] ? shortDate(dates[i]!) : ''));
+
+  return { title: m.title, current: fmt(last, m), delta, good, ticks, line, area, points, xLabels };
 }
 
-function buildBar(title: string, ppcA: number[], orgA: number[], factor: number) {
-  const ppc = ppcA.map((v) => v * factor);
-  const org = orgA.map((v) => v * factor);
+function buildBar(title: string, monthly: PerformanceMonthlyRow[], key: 'sales' | 'profit') {
+  const ppc = monthly.map((r) => Math.max(0, key === 'sales' ? r.salesPpc : r.profitPpc));
+  const org = monthly.map((r) => Math.max(0, key === 'sales' ? r.salesOrg : r.profitOrg));
   const totals = ppc.map((v, i) => v + (org[i] ?? 0));
-  const axisMax = Math.max(...totals) * 1.16;
+  const axisMax = Math.max(1, ...totals) * 1.16;
   const money = (v: number) => '$' + Math.round(v).toLocaleString('en-US');
   const tick = (v: number) => (axisMax >= 1e6 ? '$' + (v / 1e6).toFixed(1) + 'M' : v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : '$' + Math.round(v));
   const ticks = Array.from({ length: 5 }, (_, k) => {
     const v = axisMax - (k / 4) * axisMax;
     return { top: `${(k / 4) * 100}%`, label: tick(v) };
   });
-  const months = ovMonths.map((label, i) => {
+  const months = monthly.map((r, i) => {
     const t = totals[i] ?? 0;
     const o = org[i] ?? 0;
     const pc = ppc[i] ?? 0;
     const op = t ? (o / t) * 100 : 0;
     const pp = t ? (pc / t) * 100 : 0;
     const tp = (t / axisMax) * 100;
-    return { label, total: money(t), tp, op, pp, orgLabel: money(o), ppcLabel: money(pc), showOrg: op >= 12, showPpc: pp >= 12 };
+    return { label: monthLabel(r.month), total: money(t), tp, op, pp, orgLabel: money(o), ppcLabel: money(pc), showOrg: op >= 12, showPpc: pp >= 12 };
   });
   return { title, ticks, months };
 }
@@ -169,33 +131,46 @@ function LineChart({ c, height }: { c: ReturnType<typeof buildChart>; height: nu
   );
 }
 
+const RANGE_DEFS = [
+  { label: 'Last 7 days', n: 7 },
+  { label: 'Last 30 days', n: 30 },
+  { label: 'Last 60 days', n: 60 },
+  { label: 'Last 90 days', n: 90 },
+];
+
 export function PerformancePage() {
   const [loading, setLoading] = useState(true);
+  const [daily, setDaily] = useState<PerformanceDailyRow[]>([]);
+  const [monthly, setMonthly] = useState<PerformanceMonthlyRow[]>([]);
   const [tab, setTab] = useState(1);
   const [range, setRange] = useState(1);
   const [trendMetric, setTrendMetric] = useState(0);
   const [code, setCode] = useState('All');
   const [codeOpen, setCodeOpen] = useState(false);
+  const [codes, setCodes] = useState<string[]>([]);
+
+  const n = (RANGE_DEFS[range] ?? { n: 30 }).n;
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 1200);
-    return () => clearTimeout(t);
-  }, []);
+    let cancelled = false;
+    setLoading(true);
+    fetchPerformance(n, code).then((res) => {
+      if (cancelled) return;
+      setDaily(res?.daily ?? []);
+      setMonthly(res?.monthly ?? []);
+      setCodes(res?.codes ?? []);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [n, code]);
 
-  const rangeDefs = [
-    { label: 'Last 7 days', n: 7 },
-    { label: 'Last 30 days', n: 30 },
-    { label: 'Last 60 days', n: 60 },
-    { label: 'Last 90 days', n: 90 },
-  ];
-  const n = (rangeDefs[range] ?? { n: 30 }).n;
-
-  const kpiCharts = METRICS.map((m, i) => buildChart(m, n, 100 + i * 17, code, false));
+  const kpiCharts = METRICS.map((m) => buildChart(m, daily));
   const tm = METRICS[trendMetric] ?? METRICS[0]!;
-  const trend = buildChart(tm, n, 100 + trendMetric * 17, code, true);
+  const trend = buildChart(tm, daily);
 
-  const ovFactor = code === 'All' ? 1 : 0.7 + (codeSeed(code) % 55) / 100;
-  const overviewCharts = [buildBar('Monthly Total Sales', salesPpc, salesOrg, ovFactor), buildBar('Monthly Total Profit', profitPpc, profitOrg, ovFactor)];
+  const overviewCharts = [buildBar('Monthly Total Sales', monthly, 'sales'), buildBar('Monthly Total Profit', monthly, 'profit')];
   const overviewRef = useChartReveal<HTMLDivElement>([loading, tab, code]);
 
   return (
@@ -209,7 +184,7 @@ export function PerformancePage() {
           </a>
         </div>
         <div className="inline-flex items-center gap-0.5 rounded-[11px] border border-border bg-card p-[3px]">
-          {rangeDefs.map((r, i) => (
+          {RANGE_DEFS.map((r, i) => (
             <button
               key={r.label}
               onClick={() => setRange(i)}
@@ -251,7 +226,7 @@ export function PerformancePage() {
           </button>
           {codeOpen && (
             <div className="absolute left-0 right-0 top-full z-20 mt-1.5 overflow-hidden rounded-xl border border-border bg-card p-1.5 shadow-2xl">
-              {CODES.map((c) => (
+              {['All', ...codes].map((c) => (
                 <div
                   key={c}
                   onClick={() => {
@@ -310,42 +285,46 @@ export function PerformancePage() {
                       </span>
                     </div>
                   </div>
-                  <div className="relative h-[330px]">
-                    <div className="absolute left-0 top-[26px] bottom-7 w-11">
-                      {c.ticks.map((t, i) => (
-                        <div key={i} className="absolute right-1.5 -translate-y-1/2 text-right text-[11px] font-semibold text-muted-foreground" style={{ top: t.top }}>
-                          {t.label}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="absolute left-12 right-2 top-[26px] bottom-7">
-                      {c.ticks.map((t, i) => (
-                        <div key={i} className="absolute inset-x-0 h-px bg-border/60" style={{ top: t.top }} />
-                      ))}
-                      <div className="absolute inset-0 flex items-end gap-[1%]">
-                        {c.months.map((m, i) => (
-                          <div key={i} className="flex h-full flex-1 flex-col items-center justify-end">
-                            <div className="mb-1.5 whitespace-nowrap rounded-md bg-primary/10 px-2 py-0.5 text-[11.5px] font-extrabold text-primary">{m.total}</div>
-                            <div data-chart-bar className="flex w-3/5 max-w-[66px] flex-col overflow-hidden rounded-t-md" style={{ height: `${m.tp}%` }}>
-                              <div className="flex min-h-0 items-center justify-center bg-primary" style={{ height: `${m.op}%` }}>
-                                {m.showOrg && <span className="whitespace-nowrap text-[11px] font-extrabold text-primary-foreground">{m.orgLabel}</span>}
-                              </div>
-                              <div className="flex min-h-0 items-center justify-center bg-amber-500" style={{ height: `${m.pp}%` }}>
-                                {m.showPpc && <span className="whitespace-nowrap text-[11px] font-extrabold text-white">{m.ppcLabel}</span>}
-                              </div>
-                            </div>
+                  {c.months.length > 0 ? (
+                    <div className="relative h-[330px]">
+                      <div className="absolute left-0 top-[26px] bottom-7 w-11">
+                        {c.ticks.map((t, i) => (
+                          <div key={i} className="absolute right-1.5 -translate-y-1/2 text-right text-[11px] font-semibold text-muted-foreground" style={{ top: t.top }}>
+                            {t.label}
                           </div>
                         ))}
                       </div>
+                      <div className="absolute left-12 right-2 top-[26px] bottom-7">
+                        {c.ticks.map((t, i) => (
+                          <div key={i} className="absolute inset-x-0 h-px bg-border/60" style={{ top: t.top }} />
+                        ))}
+                        <div className="absolute inset-0 flex items-end gap-[1%]">
+                          {c.months.map((m, i) => (
+                            <div key={i} className="flex h-full flex-1 flex-col items-center justify-end">
+                              <div className="mb-1.5 whitespace-nowrap rounded-md bg-primary/10 px-2 py-0.5 text-[11.5px] font-extrabold text-primary">{m.total}</div>
+                              <div data-chart-bar className="flex w-3/5 max-w-[66px] flex-col overflow-hidden rounded-t-md" style={{ height: `${m.tp}%` }}>
+                                <div className="flex min-h-0 items-center justify-center bg-primary" style={{ height: `${m.op}%` }}>
+                                  {m.showOrg && <span className="whitespace-nowrap text-[11px] font-extrabold text-primary-foreground">{m.orgLabel}</span>}
+                                </div>
+                                <div className="flex min-h-0 items-center justify-center bg-amber-500" style={{ height: `${m.pp}%` }}>
+                                  {m.showPpc && <span className="whitespace-nowrap text-[11px] font-extrabold text-white">{m.ppcLabel}</span>}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="absolute left-12 right-2 bottom-0 flex h-7 items-center">
+                        {c.months.map((m, i) => (
+                          <span key={i} className="flex-1 text-center text-[11.5px] font-semibold text-muted-foreground">
+                            {m.label}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <div className="absolute left-12 right-2 bottom-0 flex h-7 items-center">
-                      {c.months.map((m, i) => (
-                        <span key={i} className="flex-1 text-center text-[11.5px] font-semibold text-muted-foreground">
-                          {m.label}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+                  ) : (
+                    <div className="flex h-[330px] items-center justify-center text-sm font-semibold text-muted-foreground">No data for this period yet.</div>
+                  )}
                 </div>
               ))}
             </div>

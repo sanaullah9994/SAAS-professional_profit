@@ -3,58 +3,13 @@ import { Fragment, useEffect, useState } from 'react';
 import { ChevronDown, Download, Info, PlayCircle, Search } from 'lucide-react';
 import { cn } from '@amazon-profit/utils';
 import { useChartReveal } from '@/lib/chart-animate';
-
-type Product = {
-  name: string;
-  sku: string;
-  code: string;
-  child: string;
-  sellable: number;
-  reserved: number;
-  pending: number;
-  unsellable: number;
-  value: number;
-  sold30: number;
-  daysCoverage: number;
-};
-
-// TODO: replace with products fetched from the connected account / DB
-const CATALOG: Product[] = [
-  { name: 'XEELA Pre Workout - Tropical', sku: 'XEELA-PRE-TROP / B0C6…', code: 'PRE', child: 'B0C6X1', sellable: 0, reserved: 8, pending: 0, unsellable: 3, value: 113, sold30: 28, daysCoverage: 9 },
-  { name: 'XEELA Pre Workout - Blue Raspberry', sku: 'XEELA-PRE-BLRSP / B0C6…', code: 'PRE', child: 'B0C6X2', sellable: 0, reserved: 18, pending: 0, unsellable: 1, value: 255, sold30: 24, daysCoverage: 23 },
-  { name: 'XEELA Plant Based Vanilla', sku: 'XEELA-PRO-SS / B0DX…', code: 'PRO', child: 'B0DX09', sellable: 10, reserved: 10, pending: 16, unsellable: 0, value: 638, sold30: 25, daysCoverage: 45 },
-  { name: 'XEELA Creatine Monohydrate', sku: 'XEELA-CRE-UF / B0DX…', code: 'CRE', child: 'B0DX41', sellable: 34, reserved: 12, pending: 0, unsellable: 2, value: 892, sold30: 31, daysCoverage: 44 },
-  { name: 'XEELA Greens Super Blend', sku: 'XEELA-GRN-30 / B0E1…', code: 'GRN', child: 'B0E1K7', sellable: 0, reserved: 6, pending: 0, unsellable: 5, value: 204, sold30: 19, daysCoverage: 10 },
-  { name: 'XEELA BCAA Amino Energy', sku: 'XEELA-BCAA-CIT / B0CN…', code: 'BCAA', child: 'B0CN8P', sellable: 46, reserved: 4, pending: 20, unsellable: 0, value: 410, sold30: 16, daysCoverage: 62 },
-];
-
-const CODES = ['All', ...Array.from(new Set(CATALOG.map((p) => p.code)))];
+import { fetchInventory, type InventoryRow } from '@/lib/api';
 
 const fmt = (n: number) => '$' + Math.round(n).toLocaleString('en-US');
-const initials = (name: string) => name.replace(/^XEELA\s*/i, '').slice(0, 2).toUpperCase();
+const initials = (name: string) => name.slice(0, 2).toUpperCase();
 const covColor = (d: number) => (d < 14 ? 'text-red-600 dark:text-red-500' : d < 30 ? 'text-amber-600 dark:text-amber-500' : 'text-primary');
 const covDot = (d: number) => (d < 14 ? 'bg-red-600 dark:bg-red-500' : d < 30 ? 'bg-amber-500' : 'bg-primary');
-
-// Seeded PRNG so the 30-day stock/sales chart looks consistent across renders.
-function daily(seed: number, sold30: number, endStock: number) {
-  let rnd = seed;
-  const rng = () => {
-    rnd = (rnd * 9301 + 49297) % 233280;
-    return rnd / 233280;
-  };
-  const raw: number[] = [];
-  for (let i = 0; i < 30; i++) raw.push(0.4 + rng());
-  const rawSum = raw.reduce((a, b) => a + b, 0);
-  const units = raw.map((x) => Math.round((sold30 * x) / rawSum));
-  const stock: number[] = [];
-  let s = endStock + sold30;
-  for (let i = 0; i < 30; i++) {
-    s -= units[i] ?? 0;
-    if (rng() > 0.86) s += Math.round(sold30 * 0.5);
-    stock.push(Math.max(0, s));
-  }
-  return { units, stock };
-}
+const shortDate = (iso: string) => new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
 function Skeleton({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return <div className={cn('pp-skeleton', className)} style={style} />;
@@ -62,18 +17,28 @@ function Skeleton({ className, style }: { className?: string; style?: React.CSSP
 
 export function InventoryPage() {
   const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<InventoryRow[]>([]);
   const [tab, setTab] = useState(0);
   const [code, setCode] = useState('All');
   const [codeOpen, setCodeOpen] = useState(false);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 1200);
-    return () => clearTimeout(t);
+    let cancelled = false;
+    fetchInventory().then((rows) => {
+      if (cancelled) return;
+      setProducts(rows ?? []);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
+  const CODES = ['All', ...Array.from(new Set(products.map((p) => p.code)))];
+
   const q = search.trim().toLowerCase();
-  const filtered = CATALOG.filter(
+  const filtered = products.filter(
     (p) =>
       (code === 'All' || p.code === code) &&
       (!q || p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || p.child.toLowerCase().includes(q)),
@@ -84,7 +49,7 @@ export function InventoryPage() {
     totalFba: p.sellable + p.reserved + p.pending,
   }));
 
-  const sum = (k: keyof Product) => filtered.reduce((a, p) => a + (p[k] as number), 0);
+  const sum = (k: keyof InventoryRow) => filtered.reduce((a, p) => a + (p[k] as number), 0);
   const totalSold = sum('sold30');
   const totalFbaUnits = filtered.reduce((a, p) => a + p.sellable + p.reserved + p.pending, 0);
   const codeSet = new Set(filtered.map((p) => p.code));
@@ -111,7 +76,20 @@ export function InventoryPage() {
       return { ...p, dailyAvg: dv.toFixed(2), pct: Math.round((dv / maxDaily) * 100) };
     });
 
-  const { units, stock } = daily(37, Math.max(1, totalSold * 8), Math.max(1, totalFbaUnits * 40));
+  // Aggregate each filtered product's real 30-day daily series into one combined series.
+  const dateMap = new Map<string, { units: number; stock: number }>();
+  for (const p of filtered) {
+    for (const d of p.daily) {
+      const cur = dateMap.get(d.date) ?? { units: 0, stock: 0 };
+      cur.units += d.units;
+      cur.stock += d.stock;
+      dateMap.set(d.date, cur);
+    }
+  }
+  const sortedDates = Array.from(dateMap.keys()).sort();
+  const units = sortedDates.length ? sortedDates.map((d) => dateMap.get(d)!.units) : [0];
+  const stock = sortedDates.length ? sortedDates.map((d) => dateMap.get(d)!.stock) : [0];
+
   const uMaxRaw = Math.max(10, ...units);
   const uMax = Math.ceil(uMaxRaw / 50) * 50;
   const sMin = Math.min(...stock);
@@ -120,20 +98,22 @@ export function InventoryPage() {
   const sLo = Math.max(0, Math.floor((sMin - sPad) / 100) * 100);
   const sHi = Math.ceil((sMaxRaw + sPad) / 100) * 100;
   const kfmt = (v: number) => (v >= 1000 ? (v / 1000).toFixed(1) + 'K' : String(v));
-  const stockTop = (v: number) => (1 - (v - sLo) / (sHi - sLo)) * 100;
+  const stockTop = (v: number) => (sHi === sLo ? 50 : (1 - (v - sLo) / (sHi - sLo)) * 100);
   const leftTicks = Array.from({ length: 6 }, (_, k) => ({ top: `${(k / 5) * 100}%`, label: Math.round(uMax - (k / 5) * uMax) }));
   const rightTicks = Array.from({ length: 6 }, (_, k) => ({ top: `${(k / 5) * 100}%`, label: kfmt(Math.round(sHi - (k / 5) * (sHi - sLo))) }));
   const maxUnitIdx = units.indexOf(Math.max(...units));
+  const lastIdx = units.length - 1;
   const chartDays = units.map((u, i) => ({
     units: u,
     h: (u / uMax) * 100,
     stockTopPct: stockTop(stock[i] ?? 0),
     showLabel: i === maxUnitIdx || i === 0,
-    showStockLabel: i === 0 || i === 29,
+    showStockLabel: i === 0 || i === lastIdx,
     stockLabel: kfmt(stock[i] ?? 0),
   }));
-  const linePoints = stock.map((v, i) => `${(((i + 0.5) / 30) * 100).toFixed(2)},${stockTop(v).toFixed(2)}`).join(' ');
-  const xLabels = ['Jun 27', 'Jul 3', 'Jul 9', 'Jul 15', 'Jul 21', 'Jul 26'];
+  const linePoints = stock.map((v, i) => `${(((i + 0.5) / stock.length) * 100).toFixed(2)},${stockTop(v).toFixed(2)}`).join(' ');
+  const xLabels = [0, 6, 12, 18, 24, lastIdx].map((i) => (sortedDates[Math.min(i, lastIdx)] ? shortDate(sortedDates[Math.min(i, lastIdx)]!) : ''));
+  const snapshotDate = sortedDates.length ? shortDate(sortedDates[sortedDates.length - 1]!) : '—';
 
   const velocityRef = useChartReveal<HTMLDivElement>([loading, tab, code]);
   const stockChartRef = useChartReveal<HTMLDivElement>([loading, code]);
@@ -182,7 +162,7 @@ export function InventoryPage() {
             )}
           </div>
           <div className="text-[13px] font-semibold text-muted-foreground">
-            Last Stock Snapshot: <span className="font-extrabold text-foreground">Jul 26, 2026</span>
+            Last Stock Snapshot: <span className="font-extrabold text-foreground">{snapshotDate}</span>
           </div>
         </div>
       </div>

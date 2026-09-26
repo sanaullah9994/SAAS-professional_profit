@@ -8,7 +8,6 @@ export async function POST(req: NextRequest) {
   if (!file) return NextResponse.json({ message: 'No file provided' }, { status: 400 });
   const text = await file.text();
   const rows = parse(text, { columns: true, skip_empty_lines: true, trim: true }) as any[];
-  const w = req.nextUrl.searchParams.get('workspaceId') ?? undefined;
   for (const r of rows) {
     await saveCogsRow(
       {
@@ -17,7 +16,6 @@ export async function POST(req: NextRequest) {
         customsPerUnit: Number(r.customs_per_unit ?? 0),
         prepFeePerUnit: Number(r.prep_fee_per_unit ?? 0),
       },
-      w,
     );
   }
   return NextResponse.json({ imported: rows.length });

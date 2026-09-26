@@ -12,6 +12,7 @@
     "clean": "rm -rf .next"
   },
   "dependencies": {
+    "@amazon-profit/amazon": "workspace:*",
     "@amazon-profit/db": "workspace:*",
     "@amazon-profit/types": "workspace:*",
     "@amazon-profit/ui": "workspace:*",

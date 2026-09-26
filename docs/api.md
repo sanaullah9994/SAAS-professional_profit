@@ -13,6 +13,9 @@
 - `GET /v1/amazon/connections`
 - `POST /v1/amazon/connections/seller-central/mock`
 - `POST /v1/amazon/connections/ads/mock`
+- `GET /api/v1/amazon/connections/seller-central/authorize` — start live SP-API OAuth (redirects to Amazon consent)
+- `GET /api/v1/amazon/connections/seller-central/login` — Amazon log-in URI target (`amazon_callback_uri`)
+- `GET /api/v1/amazon/connections/seller-central/callback` — OAuth callback (code exchange, store account, queue initial sync)
 - `POST /v1/sync`
 - `GET /v1/sync/history`
 - `GET /v1/alerts`
