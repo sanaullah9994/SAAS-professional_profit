@@ -2,6 +2,7 @@ import { listTable } from '@amazon-profit/db';
 import { Card, CardContent } from '@amazon-profit/ui';
 import { ConnectionActionsPanel } from '@/components/connection-actions';
 import { DataTable, PageHeader } from '@/components/dashboard';
+import { SyncNowButton } from '@/components/sync-now-button';
 import { workspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +21,11 @@ export default async function Page() {
   });
   return (
     <>
-      <PageHeader title="Amazon Connections" description="Connect a live Amazon seller account through Selling Partner API, or use the mock connection for development." />
+      <PageHeader
+        title="Amazon Connections"
+        description="Connect a live Amazon seller account through Selling Partner API, or use the mock connection for development."
+        action={<SyncNowButton />}
+      />
       <ConnectionActionsPanel />
       <Card>
         <CardContent className="pt-5">

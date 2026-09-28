@@ -1,6 +1,7 @@
 import { listTable } from '@amazon-profit/db';
 import { Card, CardContent } from '@amazon-profit/ui';
 import { DataTable, PageHeader } from '@/components/dashboard';
+import { SyncNowButton } from '@/components/sync-now-button';
 import { workspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
@@ -21,7 +22,7 @@ export default async function Page() {
   const rows = runs.map((r) => [dateTimeFmt(r.started_at), cap(r.trigger), rangeLabel(r.from_date, r.to_date), r.records_processed.toLocaleString(), cap(r.status)]);
   return (
     <>
-      <PageHeader title="Sync History" description="Hourly and manual imports with retries and run status." />
+      <PageHeader title="Sync History" description="Hourly and manual imports with retries and run status." action={<SyncNowButton />} />
       <Card>
         <CardContent className="pt-5">
           {rows.length > 0 ? (

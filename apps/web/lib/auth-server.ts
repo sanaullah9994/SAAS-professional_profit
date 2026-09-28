@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth';
 import { createAuthMiddleware, APIError } from 'better-auth/api';
 import { nextCookies } from 'better-auth/next-js';
 import { pool } from '@amazon-profit/db';
+import { ensureWorkspaceForUser } from './provision';
 import { passwordRequirementError } from './password-rules';
 
 function assertPassword(ctx: { path: string; body?: unknown }, field: string) {
@@ -26,6 +27,20 @@ export const auth = betterAuth({
       if (ctx.path === '/sign-up/email') assertPassword(ctx, 'password');
       else if (ctx.path === '/reset-password' || ctx.path === '/change-password') assertPassword(ctx, 'newPassword');
     }),
+  },
+
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          try {
+            await ensureWorkspaceForUser(user.id, user.email);
+          } catch (error) {
+            console.error('[auth] workspace provisioning failed:', error instanceof Error ? error.message : error);
+          }
+        },
+      },
+    },
   },
 
   rateLimit: {

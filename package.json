@@ -8,7 +8,7 @@
     "dev": "pnpm build:packages && turbo run dev --parallel",
     "build": "turbo run build",
     "build:packages": "turbo run build --filter='./packages/*'",
-    "typecheck": "turbo run typecheck",
+    "typecheck": "turbo run typecheck && tsc -p netlify/functions/tsconfig.json",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "format": "prettier --write .",
@@ -17,6 +17,8 @@
     "clean": "turbo run clean && rm -rf node_modules .turbo"
   },
   "devDependencies": {
+    "@amazon-profit/amazon": "workspace:*",
+    "@amazon-profit/sync": "workspace:*",
     "@types/node": "^26.1.1",
     "prettier": "^3.9.5",
     "turbo": "2.10.4",

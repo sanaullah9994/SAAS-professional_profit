@@ -15,6 +15,7 @@
   "dependencies": {
     "@amazon-profit/amazon": "workspace:*",
     "@amazon-profit/db": "workspace:*",
+    "@amazon-profit/sync": "workspace:*",
     "@amazon-profit/types": "workspace:*",
     "@amazon-profit/utils": "workspace:*",
     "bullmq": "^5.80.2",

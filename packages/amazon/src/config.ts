@@ -63,10 +63,6 @@ export function getAmazonConfig(): AmazonConfig {
   };
 }
 
-export function getSyncApiUrl(): string {
-  return process.env.SYNC_API_URL ?? 'http://localhost:4000';
-}
-
 export function getPublicBaseUrl(fallback: string): string {
   return process.env.APP_BASE_URL ?? process.env.BETTER_AUTH_URL ?? fallback;
 }

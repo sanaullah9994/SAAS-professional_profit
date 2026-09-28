@@ -3,7 +3,6 @@ import {
   encrypt,
   exchangeAuthorizationCode,
   getAmazonConfig,
-  getSyncApiUrl,
   marketplaceLabel,
   missingAmazonConfig,
   resolveMarketplace,
@@ -11,26 +10,11 @@ import {
 } from '@amazon-profit/amazon';
 import { query } from '@amazon-profit/db';
 import { AMAZON_OAUTH_COOKIE, clearOAuthCookie, notConfiguredRedirect, redirectConnections } from '@/lib/amazon-oauth';
+import { kickInitialSync } from '@/lib/amazon-sync';
 
 export const dynamic = 'force-dynamic';
 
 const CONNECTIONS_PATH = '/connections';
-
-async function queueInitialSync(amazonAccountId: string, workspaceId: string): Promise<'queued' | 'failed'> {
-  try {
-    const response = await fetch(new URL('/v1/sync', getSyncApiUrl()), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amazonAccountId, workspaceId, trigger: 'initial' }),
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!response.ok) return 'failed';
-    const body = (await response.json()) as { status?: string };
-    return body.status === 'queued' ? 'queued' : 'failed';
-  } catch {
-    return 'failed';
-  }
-}
 
 export async function GET(req: NextRequest) {
   const origin = req.nextUrl.origin;
@@ -101,7 +85,7 @@ export async function GET(req: NextRequest) {
     return redirectConnections(origin, { error: 'connection_store_failed' });
   }
 
-  const sync = await queueInitialSync(amazonAccountId, statePayload.workspaceId);
+  const sync = await kickInitialSync(origin, amazonAccountId, statePayload.workspaceId);
   const redirect = new URL(CONNECTIONS_PATH, origin);
   redirect.searchParams.set('connected', sellingPartnerId);
   redirect.searchParams.set('sync', sync);

@@ -8,6 +8,12 @@ importers:
 
   .:
     devDependencies:
+      '@amazon-profit/amazon':
+        specifier: workspace:*
+        version: link:packages/amazon
+      '@amazon-profit/sync':
+        specifier: workspace:*
+        version: link:packages/sync
       '@types/node':
         specifier: ^26.1.1
         version: 26.1.1
@@ -93,6 +99,9 @@ importers:
       '@amazon-profit/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@amazon-profit/sync':
+        specifier: workspace:*
+        version: link:../../packages/sync
       '@amazon-profit/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -160,6 +169,9 @@ importers:
       '@amazon-profit/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@amazon-profit/sync':
+        specifier: workspace:*
+        version: link:../../packages/sync
       '@amazon-profit/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -222,6 +234,34 @@ importers:
       tsx:
         specifier: ^4.23.1
         version: 4.23.1
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  packages/sync:
+    dependencies:
+      '@amazon-profit/amazon':
+        specifier: workspace:*
+        version: link:../amazon
+      '@amazon-profit/db':
+        specifier: workspace:*
+        version: link:../db
+      '@amazon-profit/types':
+        specifier: workspace:*
+        version: link:../types
+      '@amazon-profit/utils':
+        specifier: workspace:*
+        version: link:../utils
+      pg:
+        specifier: ^8.22.0
+        version: 8.22.0
+    devDependencies:
+      '@types/node':
+        specifier: ^26.1.1
+        version: 26.1.1
+      '@types/pg':
+        specifier: ^8.20.0
+        version: 8.20.0
       typescript:
         specifier: ^6.0.3
         version: 6.0.3

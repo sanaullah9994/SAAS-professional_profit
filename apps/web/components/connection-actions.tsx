@@ -28,7 +28,14 @@ function StatusBanner() {
   if (connected) {
     return (
       <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-600 dark:text-emerald-400">
-        Amazon seller {connected} connected successfully. Initial sync {sync === 'queued' ? 'queued' : sync === 'failed' ? 'could not be queued — trigger it manually from Sync History' : 'status unknown'}.
+        Amazon seller {connected} connected successfully. Initial sync{' '}
+        {sync === 'queued'
+          ? 'queued in the background.'
+          : sync === 'started'
+            ? 'started — follow progress on Sync History.'
+            : sync === 'failed'
+              ? 'could not start — trigger it manually from Sync History.'
+              : 'status unknown'}.
       </div>
     );
   }
