@@ -19,3 +19,11 @@ coverage/
 
 # SQL is run manually against the DB now (no migrate.ts runner) — not tracked in git
 packages/db/migrations/*.sql
+
+
+apps/web/lib/backfill.ts
+
+apps/web/scripts/backfill-workspaces.ts
+
+
+#they are like migration scripts so I commited them out

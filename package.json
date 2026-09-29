@@ -14,6 +14,7 @@
     "format": "prettier --write .",
     "db:migrate": "pnpm --filter @amazon-profit/db migrate",
     "db:seed": "pnpm --filter @amazon-profit/db seed",
+    "db:backfill-workspaces": "pnpm --filter @amazon-profit/web backfill:workspaces",
     "clean": "turbo run clean && rm -rf node_modules .turbo"
   },
   "devDependencies": {
