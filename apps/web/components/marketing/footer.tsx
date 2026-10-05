@@ -12,6 +12,9 @@ export function Footer() {
           &copy; {new Date().getFullYear()} ProfitPilot. All rights reserved.
         </span>
         <div className="flex gap-6 text-sm font-medium text-muted-foreground">
+          <Link href="/support" className="transition hover:text-foreground">
+            Support
+          </Link>
           <Link href="#" className="transition hover:text-foreground">
             Privacy
           </Link>

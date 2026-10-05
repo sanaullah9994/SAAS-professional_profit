@@ -4,7 +4,15 @@ import { getSessionCookie } from 'better-auth/cookies';
 // Everything NOT listed here is protected by default, so a new page under
 // app/(dashboard)/* is never accidentally left unauthenticated just because
 // nobody remembered to add it to a matcher list.
-const PUBLIC_PATHS = new Set(['/', '/pricing', '/login', '/forgot-password', '/reset-password', '/verify-email']);
+const PUBLIC_PATHS = new Set([
+  '/',
+  '/pricing',
+  '/support',
+  '/login',
+  '/forgot-password',
+  '/reset-password',
+  '/verify-email',
+]);
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

@@ -11,6 +11,7 @@ const navLinks = [
   ['/#security', 'Solutions'],
   ['/#social', 'Resources'],
   ['/pricing', 'Pricing'],
+  ['/support', 'Support'],
 ] as const;
 
 export function Header() {
