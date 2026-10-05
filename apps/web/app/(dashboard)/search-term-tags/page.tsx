@@ -1,12 +1,5 @@
-import { Card, CardContent } from '@amazon-profit/ui';
-import { PageHeader } from '@/components/dashboard';
+import { SearchTermTagsPage } from '@/components/search-term-tags';
+
 export default function Page() {
-  return (
-    <>
-      <PageHeader title="Search Term Tags" description="Tag and organize search terms for faster PPC triage." />
-      <Card>
-        <CardContent className="py-16 text-center text-sm text-muted-foreground">Coming soon.</CardContent>
-      </Card>
-    </>
-  );
+  return <SearchTermTagsPage />;
 }
