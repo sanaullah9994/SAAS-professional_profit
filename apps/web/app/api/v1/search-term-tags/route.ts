@@ -96,7 +96,7 @@ export async function PATCH(req: NextRequest) {
   const id = body?.id ?? '';
   if (!id) return NextResponse.json({ error: 'Tag id is required.' }, { status: 400 });
 
-  const { error, values } = validate(body);
+  const { error, values } = validate(body ?? {});
   if (error || !values) return NextResponse.json({ error: error ?? 'Invalid tag.' }, { status: 400 });
 
   try {
