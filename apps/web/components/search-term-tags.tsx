@@ -241,7 +241,7 @@ export function SearchTermTagsPage() {
         return;
       }
 
-      const first = parsed[0].map((c) => c.trim().toLowerCase());
+      const first = (parsed[0] ?? []).map((c) => c.trim().toLowerCase());
       const hasHeader = first[0]?.includes('search') && first[1] === 'type' && first[2] === 'tag';
       const dataRows = hasHeader ? parsed.slice(1) : parsed;
 
