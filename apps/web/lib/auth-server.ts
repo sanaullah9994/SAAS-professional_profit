@@ -1,9 +1,10 @@
 import { betterAuth } from 'better-auth';
 import { createAuthMiddleware, APIError } from 'better-auth/api';
 import { nextCookies } from 'better-auth/next-js';
-import { pool } from '@amazon-profit/db';
+import { pool, query } from '@amazon-profit/db';
 import { ensureWorkspaceForUser } from './provision';
 import { passwordRequirementError } from './password-rules';
+import { getPlatformSettings } from './admin-settings';
 
 function assertPassword(ctx: { path: string; body?: unknown }, field: string) {
   const body = ctx.body as Record<string, unknown> | undefined;
@@ -24,8 +25,16 @@ export const auth = betterAuth({
 
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
-      if (ctx.path === '/sign-up/email') assertPassword(ctx, 'password');
-      else if (ctx.path === '/reset-password' || ctx.path === '/change-password') assertPassword(ctx, 'newPassword');
+      if (ctx.path === '/sign-up/email') {
+        // Platform setting with real enforcement (see lib/admin-settings.ts).
+        const settings = await getPlatformSettings();
+        if (!settings.signupsEnabled) {
+          throw new APIError('FORBIDDEN', { message: 'Account registration is currently disabled.', code: 'SIGNUPS_DISABLED' });
+        }
+        assertPassword(ctx, 'password');
+      } else if (ctx.path === '/reset-password' || ctx.path === '/change-password') {
+        assertPassword(ctx, 'newPassword');
+      }
     }),
   },
 
@@ -37,6 +46,28 @@ export const auth = betterAuth({
             await ensureWorkspaceForUser(user.id, user.email);
           } catch (error) {
             console.error('[auth] workspace provisioning failed:', error instanceof Error ? error.message : error);
+          }
+        },
+      },
+    },
+    session: {
+      create: {
+        // Suspended accounts cannot obtain a new session (covers password and
+        // social sign-in). Fails open on unexpected query errors so a broken
+        // migration never locks every user out of signing in; suspend also
+        // revokes existing sessions transactionally (packages/db admin.ts).
+        before: async (session) => {
+          try {
+            const { rows } = await query<{ suspended_at: Date | null }>(
+              `SELECT suspended_at FROM users WHERE id = $1`,
+              [session.userId],
+            );
+            if (rows[0]?.suspended_at) {
+              throw new APIError('FORBIDDEN', { message: 'This account has been suspended.', code: 'ACCOUNT_SUSPENDED' });
+            }
+          } catch (error) {
+            if (error instanceof APIError) throw error;
+            console.error('[auth] suspension check failed:', error instanceof Error ? error.message : error);
           }
         },
       },

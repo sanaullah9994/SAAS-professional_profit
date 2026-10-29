@@ -255,3 +255,7 @@ export async function listTable(table: 'orders'|'refunds'|'cogs_history'|'sync_r
   };
   return (await query(sql[table]!, [workspaceId])).rows;
 }
+
+// Platform-admin queries (cross-tenant). Only call from server code behind the
+// platform-admin guard — never from client components.
+export * from './admin.js';

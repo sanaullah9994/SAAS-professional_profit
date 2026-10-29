@@ -1,4 +1,7 @@
 export type OrganizationRole = 'owner' | 'admin' | 'analyst';
+// Platform-level role on users. Distinct from OrganizationRole: it governs the
+// owner admin panel (/admin), never workspace or organization access.
+export type PlatformRole = 'user' | 'owner';
 export type SyncTrigger = 'manual' | 'scheduled' | 'initial';
 export type SyncStatus = 'queued' | 'running' | 'completed' | 'failed';
 export type AmazonProviderMode = 'mock' | 'live';

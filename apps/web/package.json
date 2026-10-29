@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "node -e \"console.log('web: lint configured later')\"",
     "test": "tsx --test test/*.test.ts",
+    "admin:promote": "tsx scripts/promote-platform-owner.ts",
     "backfill:workspaces": "tsx scripts/backfill-workspaces.ts",
     "clean": "rm -rf .next"
   },
