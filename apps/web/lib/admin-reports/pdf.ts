@@ -35,9 +35,8 @@ export function buildPdfReport(report: AdminReport): ArrayBuffer {
     y += 8;
 
     const body = section.rows.slice(1).map((row) => row.map(printable));
-    const head = section.rows.length
-      ? [section.rows[0].map(printable)]
-      : [[]];
+    const firstRow = section.rows[0];
+    const head = firstRow ? [firstRow.map(printable)] : [[]];
 
     autoTable(pdf, {
       startY: y,
