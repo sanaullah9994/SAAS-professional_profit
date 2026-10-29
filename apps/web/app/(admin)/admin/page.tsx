@@ -13,7 +13,7 @@ import {
   checkWebApp,
   type HealthCheck,
 } from '@/lib/admin-health';
-
+import { ReportDownloadButtons } from '@/components/admin/report-download-buttons';
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Admin Overview · ProfitPilot' };
 
@@ -49,11 +49,16 @@ export default async function AdminOverviewPage() {
 
   return (
     <>
-      <AdminPageHeader
-        title="Platform Overview"
-        description="Real-time snapshot of users, workspaces, connections and synchronization across the platform."
-        breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Overview' }]}
-      />
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0 flex-1">
+        <AdminPageHeader
+          title="Platform Overview"
+          description="Real-time snapshot of users, workspaces, connections and synchronization across the platform."
+          breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Overview' }]}
+        />
+      </div>
+      <ReportDownloadButtons />
+    </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Registered users" value={formatNumber(stats.totalUsers)} hint={`${formatNumber(stats.platformOwners)} platform owner${stats.platformOwners === 1 ? '' : 's'}`} />

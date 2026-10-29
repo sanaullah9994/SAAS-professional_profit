@@ -8,6 +8,7 @@ export const ADMIN_AUDIT_ACTIONS = [
   'sync.retry',
   'settings.update',
   'platform_owner.grant',
+  'report.export',
 ] as const;
 
 export type AdminAuditAction = (typeof ADMIN_AUDIT_ACTIONS)[number];

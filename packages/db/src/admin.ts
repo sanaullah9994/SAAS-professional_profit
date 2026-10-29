@@ -694,3 +694,107 @@ export async function insertAuditLog(input: InsertAuditLogInput): Promise<void> 
     ],
   );
 }
+
+// --- Report exports (CSV / PDF / DOCX) -------------------------------------
+// Read-only aggregates for the owner report. Never select credential columns
+// (auth_accounts.*, *_refresh_token_encrypted, user_sessions.token).
+
+export interface AdminRegistrationDay {
+  /** UTC calendar day as YYYY-MM-DD. */
+  day: string;
+  count: number;
+}
+
+export async function getAdminRegistrationsByDay(days: number): Promise<AdminRegistrationDay[]> {
+  const windowDays = Math.min(365, Math.max(1, Math.trunc(days) || 30));
+  const { rows } = await query<AdminRegistrationDay>(
+    `SELECT ((created_at AT TIME ZONE 'UTC')::date)::text AS day, count(*)::int AS count
+       FROM users
+      WHERE created_at >= now() - ($1::int * interval '1 day')
+      GROUP BY 1
+      ORDER BY 1`,
+    [windowDays],
+  );
+  return rows;
+}
+
+export interface AdminRevenueInvoice {
+  invoice_number: string;
+  status: string;
+  amount_due: number;
+  issue_date: Date;
+  workspace_name: string;
+  organization_name: string;
+}
+
+export interface AdminRevenueReport {
+  invoiceCount: number;
+  paidCount: number;
+  pendingCount: number;
+  voidCount: number;
+  paidTotal: number;
+  pendingTotal: number;
+  voidTotal: number;
+  byMonth: { month: string; count: number; paid: number; pending: number }[];
+  recent: AdminRevenueInvoice[];
+}
+
+// Invoices (migration 0010) are the only billing data that exists today —
+// there is no subscription table. Amounts are cast to float8 because the pg
+// driver returns numeric columns as strings.
+export async function getAdminRevenueReport(recentLimit = 500): Promise<AdminRevenueReport> {
+  const limit = Math.min(5_000, Math.max(1, Math.trunc(recentLimit) || 500));
+  const [totals, byMonth, recent] = await Promise.all([
+    query<{
+      invoice_count: number;
+      paid_count: number;
+      pending_count: number;
+      void_count: number;
+      paid_total: number;
+      pending_total: number;
+      void_total: number;
+    }>(
+      `SELECT count(*)::int AS invoice_count,
+              count(*) FILTER (WHERE status = 'paid')::int AS paid_count,
+              count(*) FILTER (WHERE status = 'pending')::int AS pending_count,
+              count(*) FILTER (WHERE status = 'void')::int AS void_count,
+              coalesce(sum(amount_due) FILTER (WHERE status = 'paid'), 0)::double precision AS paid_total,
+              coalesce(sum(amount_due) FILTER (WHERE status = 'pending'), 0)::double precision AS pending_total,
+              coalesce(sum(amount_due) FILTER (WHERE status = 'void'), 0)::double precision AS void_total
+         FROM invoices`,
+    ),
+    query<{ month: string; count: number; paid: number; pending: number }>(
+      `SELECT to_char(date_trunc('month', issue_date AT TIME ZONE 'UTC'), 'YYYY-MM') AS month,
+              count(*)::int AS count,
+              coalesce(sum(amount_due) FILTER (WHERE status = 'paid'), 0)::double precision AS paid,
+              coalesce(sum(amount_due) FILTER (WHERE status = 'pending'), 0)::double precision AS pending
+         FROM invoices
+        GROUP BY 1
+        ORDER BY 1 DESC
+        LIMIT 24`,
+    ),
+    query<AdminRevenueInvoice>(
+      `SELECT i.invoice_number, i.status, i.amount_due::double precision AS amount_due, i.issue_date,
+              w.name AS workspace_name, o.name AS organization_name
+         FROM invoices i
+         JOIN workspaces w ON w.id = i.workspace_id
+         JOIN organizations o ON o.id = w.organization_id
+        ORDER BY i.issue_date DESC, i.created_at DESC
+        LIMIT $1`,
+      [limit],
+    ),
+  ]);
+
+  const t = totals.rows[0];
+  return {
+    invoiceCount: t?.invoice_count ?? 0,
+    paidCount: t?.paid_count ?? 0,
+    pendingCount: t?.pending_count ?? 0,
+    voidCount: t?.void_count ?? 0,
+    paidTotal: t?.paid_total ?? 0,
+    pendingTotal: t?.pending_total ?? 0,
+    voidTotal: t?.void_total ?? 0,
+    byMonth: byMonth.rows,
+    recent: recent.rows,
+  };
+}

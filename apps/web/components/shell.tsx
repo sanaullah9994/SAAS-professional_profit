@@ -19,10 +19,12 @@ import {
   Search,
   Settings as SettingsIcon,
   Shapes,
+  ShieldCheck,
   Sun,
   TrendingUp,
   Upload,
   Users,
+  FileDown
 } from 'lucide-react';
 import { cn } from '@amazon-profit/utils';
 import { LogoMark } from '@/components/marketing/logo';
@@ -35,6 +37,7 @@ const coreLinks: NavLink[] = [
   { href: '/profit-calculator', label: 'Profit Calculator', icon: Calculator },
   { href: '/fba-inventory', label: 'FBA Inventory', icon: Boxes },
   { href: '/traffic-analytics', label: 'Traffic Analytics', icon: TrendingUp },
+  { href: '/admin/reports', label: 'Reports', icon: FileDown },
 ];
 
 const advancedLinks: NavLink[] = [
@@ -87,7 +90,7 @@ function NavGroup({ title, links, path }: { title: string; links: NavLink[]; pat
   );
 }
 
-export function Shell({ children }: { children: React.ReactNode }) {
+export function Shell({ children, isAdmin = false }: { children: React.ReactNode; isAdmin?: boolean }) {
   const path = usePathname();
   const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
@@ -149,6 +152,18 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   )}
                 </Link>
               ))}
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className={cn(
+                    'flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-semibold text-primary transition hover:bg-muted',
+                    path.startsWith('/admin') && 'bg-muted font-bold',
+                  )}
+                >
+                  <ShieldCheck className="size-[18px]" strokeWidth={1.8} />
+                  <span className="flex-1">Admin Panel</span>
+                </Link>
+              )}
               <button
                 onClick={logOut}
                 className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-muted-foreground transition hover:bg-muted"

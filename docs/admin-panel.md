@@ -84,9 +84,27 @@ Only settings with real server-side enforcement exist (`platform_settings`):
 ## Audit log
 
 Sensitive actions (`user.suspend`, `user.reactivate`, `sync.retry`,
-`settings.update`, `platform_owner.grant`) are written to `audit_logs` with
-actor, target, result and sanitized scalar metadata. Passwords, tokens and
-request bodies are never recorded.
+`settings.update`, `platform_owner.grant`, `report.export`) are written to
+`audit_logs` with actor, target, result and sanitized scalar metadata.
+Passwords, tokens and request bodies are never recorded.
+
+Report exports record the authenticated platform admin's identity, export
+format and result. Audit records are stored in the database; the generated
+report file itself is downloaded by the admin and is not stored as an audit
+attachment.
+
+## Admin report exports
+
+The Platform Overview page at `/admin` provides a **Download Report** menu
+with CSV, PDF and DOCX formats. Exports are generated from existing platform
+database data and include overview metrics and available user, workspace,
+connection, synchronization, revenue and audit information.
+
+Exports are served through `GET /api/v1/admin/reports/export?format=csv`,
+`format=pdf` or `format=docx`. The endpoint requires platform-owner
+authorization, validates the requested format, and sends downloads with
+private, no-cache headers. Export activity is recorded in `audit_logs` using
+the `report.export` action.
 
 ## Sync retry safety
 
